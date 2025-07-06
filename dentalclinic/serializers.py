@@ -19,7 +19,7 @@ class VisitHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VisitHistory
-        fields = ['visit_date', 'reason', 'prescriptions']
+        fields = ['id','visit_date', 'reason', 'prescriptions']
 
 
 class PatientDetailSerializer(serializers.ModelSerializer):
@@ -57,3 +57,24 @@ class PatientWriteSerializer(serializers.ModelSerializer):
             )
 
         return instance
+
+
+#user serializer
+from .models import AppUser
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+    def validate(self, data):
+        try:
+            user = AppUser.objects.get(username=data['username'], password=data['password'])
+        except AppUser.DoesNotExist:
+            raise serializers.ValidationError("Invalid username or password")
+
+        return {
+            'id': user.id,
+            'username': user.username,
+            'role': user.role,
+        }
+

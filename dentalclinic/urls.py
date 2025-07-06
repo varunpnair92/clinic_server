@@ -13,4 +13,6 @@ urlpatterns = [
     path('range/', views.summary_between_dates),
     path('patient/<int:patient_id>/', views.summary_by_patient),
     path('add/', views.add_visit),
+    path('login/', views.login_view),
+    
 ]

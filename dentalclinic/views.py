@@ -108,9 +108,24 @@ def update_visit(request, visit_id):
     except VisitHistory.DoesNotExist:
         return Response({'error': 'Visit not found'}, status=404)
 
-    data = request.data
+    data = request.data.copy()
+    data.pop('patient_id', None)  # Remove patient_id if present
+
     serializer = VisitHistorySerializer(visit, data=data, partial=True)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
+
+
+#login view
+
+from .serializers import LoginSerializer
+
+@api_view(['POST'])
+def login_view(request):
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        return Response(serializer.validated_data)
+    return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+

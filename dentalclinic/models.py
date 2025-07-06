@@ -48,3 +48,22 @@ class TransactionHistory(models.Model):
 
     def __str__(self):
         return f"₹{self.amount} for {self.patient.name}"
+
+
+
+#user model
+
+
+class AppUser(models.Model):
+    ROLE_CHOICES = (
+        ('doctor', 'Doctor'),
+        ('receptionist', 'Receptionist'),
+        ('admin', 'Admin'),
+    )
+
+    username = models.CharField(max_length=150, unique=True)
+    password = models.CharField(max_length=128)  # Store hashed passwords if needed
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+    def __str__(self):
+        return f"{self.username} ({self.role})"
