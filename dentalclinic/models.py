@@ -5,12 +5,14 @@ class Patient(models.Model):
     age = models.PositiveIntegerField()
     gender = models.CharField(max_length=10)
     phone = models.CharField(max_length=15)
+    op_number = models.PositiveIntegerField(unique=True)
 
     class Meta:
-        unique_together = ['name', 'phone']  # ✅ Enforces unique name + phone
+        unique_together = ['name', 'phone']
 
     def __str__(self):
         return f"{self.name} ({self.phone})"
+
 
 
 class PatientAddress(models.Model):

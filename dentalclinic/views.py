@@ -11,11 +11,30 @@ from .serializers import *
 
 @api_view(['POST'])
 def register_patient(request):
+    name = request.data.get('name')
+    phone = request.data.get('phone')
+
+    # Check if patient already exists
+    try:
+        existing = Patient.objects.get(name=name, phone=phone)
+        return Response({
+            'message': 'Patient already exists',
+            'existing_op_number': existing.op_number,
+        }, status=400)
+    except Patient.DoesNotExist:
+        pass
+
+    # Continue with registration
     serializer = PatientWriteSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
+        patient = serializer.save()
+        return Response({
+            'id': patient.id,
+            'name': patient.name,
+            'op_number': patient.op_number,
+        }, status=201)
     return Response(serializer.errors, status=400)
+
 
 @api_view(['PUT'])
 def update_patient(request, patient_id):

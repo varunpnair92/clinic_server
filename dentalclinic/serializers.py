@@ -40,9 +40,15 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         address_data = validated_data.pop('address')
+        
+        last_op = Patient.objects.order_by('-op_number').first()
+        next_op = (last_op.op_number + 1) if last_op else 1000  # starting from 1000
+
+        validated_data['op_number'] = next_op
         patient = Patient.objects.create(**validated_data)
         PatientAddress.objects.create(patient=patient, **address_data)
         return patient
+
 
     def update(self, instance, validated_data):
         address_data = validated_data.pop('address', None)
