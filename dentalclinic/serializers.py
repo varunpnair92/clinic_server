@@ -25,8 +25,12 @@ class VisitHistorySerializer(serializers.ModelSerializer):
     def get_xray_url(self, obj):
         request = self.context.get('request')
         if obj.xray_image and hasattr(obj.xray_image, 'url'):
-            return request.build_absolute_uri(obj.xray_image.url) if request else obj.xray_image.url
+            url_path = obj.xray_image.url
+            if request:
+                return request.build_absolute_uri('/clinic' + url_path)
+            return '/clinic' + url_path
         return None
+
 
 
 
