@@ -68,7 +68,8 @@ def search_patient(request):
     if not patients.exists():
         return Response({'message': 'No patients found'}, status=404)
 
-    serializer = PatientDetailSerializer(patients, many=True)
+    #serializer = PatientDetailSerializer(patients, many=True)
+    serializer = PatientDetailSerializer(patients, many=True, context={'request': request})
     return Response(serializer.data)
 
 
