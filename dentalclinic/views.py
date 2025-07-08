@@ -9,6 +9,7 @@ from datetime import datetime
 from .models import *
 from .serializers import *
 
+
 @api_view(['POST'])
 def register_patient(request):
     name = request.data.get('name')
@@ -49,14 +50,16 @@ def update_patient(request, patient_id):
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
 
+
 @api_view(['GET'])
 def search_patient(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return Response([], status=200)
-
     patients = Patient.objects.filter(
-        Q(name__icontains=query) | Q(phone__icontains=query)
+        Q(name__icontains=query) |
+        Q(phone__icontains=query) |
+        Q(op_number__icontains=query)
     ).distinct()
 
     if not patients.exists():
