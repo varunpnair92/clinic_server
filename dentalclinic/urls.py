@@ -2,7 +2,8 @@
 # urls.py
 from django.urls import path
 from . import views
-
+from django.conf import settings
+from django.conf.urls.static import static
 urlpatterns = [
     path('register/', views.register_patient),
     path('update/<int:patient_id>/', views.update_patient),
@@ -16,3 +17,6 @@ urlpatterns = [
     path('login/', views.login_view),
     
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

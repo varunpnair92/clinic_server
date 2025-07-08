@@ -27,6 +27,7 @@ class VisitHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='visits')
     visit_date = models.DateTimeField(auto_now_add=True)
     reason = models.TextField()
+    xray_image = models.ImageField(upload_to='xray_images/', null=True, blank=True)
 
     def __str__(self):
         return f"Visit on {self.visit_date.date()} - {self.patient.name}"

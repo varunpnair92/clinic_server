@@ -1,6 +1,7 @@
 
 
 # views.py
+import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,6 +9,8 @@ from django.db.models import Q
 from datetime import datetime
 from .models import *
 from .serializers import *
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import parser_classes
 
 
 @api_view(['POST'])
@@ -106,22 +109,45 @@ def summary_by_patient(request, patient_id):
     serializer = PatientDetailSerializer(patient)
     return Response(serializer.data)
 
+
+
 @api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
 def add_visit(request):
     patient_id = request.data.get('patient_id')
     reason = request.data.get('reason')
     prescription_data = request.data.get('prescriptions', [])
+
+    # Fix: convert from string to list if needed
+    if isinstance(prescription_data, str):
+        try:
+            prescription_data = json.loads(prescription_data)
+        except json.JSONDecodeError:
+            return Response({'error': 'Invalid prescription format'}, status=400)
 
     try:
         patient = Patient.objects.get(id=patient_id)
     except Patient.DoesNotExist:
         return Response({'error': 'Patient not found'}, status=404)
 
-    visit = VisitHistory.objects.create(patient=patient, reason=reason)
-    for p in prescription_data:
-        Prescription.objects.create(visit=visit, **p)
+    # ✅ Check for xray image in request.FILES
+    xray_file = request.FILES.get('xray')
 
-    return Response({'message': 'Visit added successfully'}, status=201)
+    # ✅ Save visit with image if present
+    visit = VisitHistory.objects.create(
+        patient=patient,
+        reason=reason,
+        xray_image=xray_file if xray_file else None
+    )
+
+    # ✅ Save prescriptions
+    for p in prescription_data:
+        if isinstance(p, dict):
+            Prescription.objects.create(visit=visit, **p)
+
+    return Response({'message': 'Visit added successfully', 'visit_id': visit.id}, status=201)
+
+
 
 @api_view(['PUT'])
 def update_visit(request, visit_id):

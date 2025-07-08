@@ -16,10 +16,18 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
 class VisitHistorySerializer(serializers.ModelSerializer):
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
+    xray_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VisitHistory
-        fields = ['id','visit_date', 'reason', 'prescriptions']
+        fields = ['id', 'visit_date', 'reason', 'xray_url', 'prescriptions']
+
+    def get_xray_url(self, obj):
+        request = self.context.get('request')
+        if obj.xray_image and hasattr(obj.xray_image, 'url'):
+            return request.build_absolute_uri(obj.xray_image.url) if request else obj.xray_image.url
+        return None
+
 
 
 class PatientDetailSerializer(serializers.ModelSerializer):
