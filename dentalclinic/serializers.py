@@ -17,6 +17,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class VisitHistorySerializer(serializers.ModelSerializer):
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
     xray_url = serializers.SerializerMethodField()
+    visit_date = serializers.SerializerMethodField()
 
     class Meta:
         model = VisitHistory
@@ -30,6 +31,10 @@ class VisitHistorySerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri('/clinic' + url_path)
             return '/clinic' + url_path
         return None
+    
+    def get_visit_date(self, obj):
+        # Format: YYYY-MM-DD HH:MM (no seconds or microseconds)
+        return obj.visit_date.strftime('%Y-%m-%d %H:%M') if obj.visit_date else None
 
 
 
