@@ -1,3 +1,4 @@
+from datetime import date
 from rest_framework import serializers
 from .models import Patient, PatientAddress, VisitHistory, Prescription
 
@@ -42,10 +43,17 @@ class VisitHistorySerializer(serializers.ModelSerializer):
 class PatientDetailSerializer(serializers.ModelSerializer):
     address = AddressSerializer(read_only=True)
     visits = VisitHistorySerializer(many=True, read_only=True)
+    last_visit_days_ago = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'age', 'gender', 'phone', 'address', 'visits']
+        fields = ['id', 'name', 'age', 'gender', 'phone', 'address', 'visits','last_visit_days_ago','op_number']
+    def get_last_visit_days_ago(self, obj):
+        last_visit = obj.visits.order_by('-visit_date').first()
+        if last_visit and last_visit.visit_date:
+            days_ago = (date.today() - last_visit.visit_date.date()).days
+            return f"{days_ago} days ago"
+        return "No visits yet"
 
 
 class PatientWriteSerializer(serializers.ModelSerializer):
