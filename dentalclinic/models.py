@@ -2,7 +2,7 @@ from django.db import models
 
 class Patient(models.Model):
     name = models.CharField(max_length=100)
-    age = models.PositiveIntegerField()
+    age = models.FloatField()
     gender = models.CharField(max_length=10)
     phone = models.CharField(max_length=15)
     op_number = models.PositiveIntegerField(unique=True)

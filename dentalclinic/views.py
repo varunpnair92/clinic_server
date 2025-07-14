@@ -54,23 +54,25 @@ def update_patient(request, patient_id):
     return Response(serializer.errors, status=400)
 
 
+
 @api_view(['GET'])
 def search_patient(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return Response([], status=200)
+
     patients = Patient.objects.filter(
-        Q(name__icontains=query) |
-        Q(phone__icontains=query) |
-        Q(op_number__icontains=query)
+        Q(name__istartswith=query) |
+        Q(phone__istartswith=query) |
+        Q(op_number__istartswith=query)
     ).distinct()
 
     if not patients.exists():
         return Response({'message': 'No patients found'}, status=404)
 
-    #serializer = PatientDetailSerializer(patients, many=True)
     serializer = PatientDetailSerializer(patients, many=True, context={'request': request})
     return Response(serializer.data)
+
 
 
 
