@@ -114,12 +114,20 @@ def summary_by_patient(request, patient_id):
 
 
 
+import json
+from datetime import datetime
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from .models import Patient, VisitHistory, Prescription
+
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def add_visit(request):
     patient_id = request.data.get('patient_id')
     reason = request.data.get('reason')
     prescription_data = request.data.get('prescriptions', [])
+    visit_date_str = request.data.get('visit_date')  # Optional date from frontend
 
     # Fix: convert from string to list if needed
     if isinstance(prescription_data, str):
@@ -133,23 +141,31 @@ def add_visit(request):
     except Patient.DoesNotExist:
         return Response({'error': 'Patient not found'}, status=404)
 
-    # ✅ Check for xray image in request.FILES
+    # Optional: Parse visit_date if provided
+    visit_date = None
+    if visit_date_str:
+        try:
+            visit_date = datetime.fromisoformat(visit_date_str)
+        except ValueError:
+            return Response({'error': 'Invalid visit_date format (Expected ISO 8601)'}, status=400)
+
+    # Handle xray image
     xray_file = request.FILES.get('xray')
 
-    # ✅ Save visit with image if present
+    # Save visit with optional visit_date
     visit = VisitHistory.objects.create(
         patient=patient,
         reason=reason,
-        xray_image=xray_file if xray_file else None
+        xray_image=xray_file if xray_file else None,
+        visit_date=visit_date  # Will be None if not provided (model default applies)
     )
 
-    # ✅ Save prescriptions
+    # Save prescriptions
     for p in prescription_data:
         if isinstance(p, dict):
             Prescription.objects.create(visit=visit, **p)
 
     return Response({'message': 'Visit added successfully', 'visit_id': visit.id}, status=201)
-
 
 
 @api_view(['PUT'])

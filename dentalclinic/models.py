@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils.timezone import now
+
 
 class Patient(models.Model):
     name = models.CharField(max_length=100)
@@ -26,7 +28,7 @@ class PatientAddress(models.Model):
 
 class VisitHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='visits')
-    visit_date = models.DateTimeField(auto_now_add=True)
+    visit_date = models.DateTimeField(default=now)
     reason = models.TextField()
     xray_image = models.ImageField(upload_to='xray_images/', null=True, blank=True)
 
