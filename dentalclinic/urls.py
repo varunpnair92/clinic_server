@@ -16,6 +16,9 @@ urlpatterns = [
     path('add/', views.add_visit),
     path('login/', views.login_view),
     
+    path('add_user/', views.add_user, name='add_user'),
+    path('change_password/', views.change_password, name='change_password'),
+    
 ]
 
 if settings.DEBUG:

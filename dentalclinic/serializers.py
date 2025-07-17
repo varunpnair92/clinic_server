@@ -120,15 +120,18 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
 #user serializer
 from .models import AppUser
-
+from django.contrib.auth.hashers import check_password
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
 
     def validate(self, data):
         try:
-            user = AppUser.objects.get(username=data['username'], password=data['password'])
+            user = AppUser.objects.get(username=data['username'])
         except AppUser.DoesNotExist:
+            raise serializers.ValidationError("Invalid username or password")
+
+        if not check_password(data['password'], user.password):
             raise serializers.ValidationError("Invalid username or password")
 
         return {
@@ -136,4 +139,37 @@ class LoginSerializer(serializers.Serializer):
             'username': user.username,
             'role': user.role,
         }
+
+
+from .models import AppUser
+from django.contrib.auth.hashers import make_password
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppUser
+        fields = ['username', 'password', 'role']
+
+    def create(self, validated_data):
+        validated_data['password'] = make_password(validated_data['password'])
+        return super().create(validated_data)
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    new_password = serializers.CharField()
+
+    def validate(self, data):
+        username = data.get('username')
+        if not AppUser.objects.filter(username=username).exists():
+            raise serializers.ValidationError("User does not exist.")
+        return data
+
+    def save(self):
+        username = self.validated_data['username']
+        new_password = make_password(self.validated_data['new_password'])
+        user = AppUser.objects.get(username=username)
+        user.password = new_password
+        user.save()
+        return user
 
