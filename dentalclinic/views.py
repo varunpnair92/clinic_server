@@ -202,3 +202,14 @@ def change_password(request):
         serializer.save()
         return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+#delete patient
+@api_view(['DELETE'])
+def delete_patient(request, patient_id):
+    try:
+        patient = Patient.objects.get(id=patient_id)
+        patient.delete()
+        return Response({'message': 'Patient deleted successfully.'}, status=status.HTTP_200_OK)
+    except Patient.DoesNotExist:
+        return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)

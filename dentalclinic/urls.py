@@ -18,6 +18,8 @@ urlpatterns = [
     
     path('add_user/', views.add_user, name='add_user'),
     path('change_password/', views.change_password, name='change_password'),
+    path('delete/<int:patient_id>/', views.delete_patient, name='delete_patient')
+
     
 ]
 
