@@ -7,7 +7,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('register/', views.register_patient),
     path('update/<int:patient_id>/', views.update_patient),
-    path('update_visit/<int:patient_id>/', views.update_visit),
+    path('update_visit/<int:visit_id>/', views.update_visit, name='update_visit'),
+    path('delete_visit/<int:visit_id>/', views.delete_visit, name='delete_visit'),
 
     path('search/', views.search_patient),
     path('day/', views.summary_by_day),

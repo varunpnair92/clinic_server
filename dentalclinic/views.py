@@ -109,7 +109,7 @@ def summary_by_patient(request, patient_id):
     except Patient.DoesNotExist:
         return Response({'error': 'Patient not found'}, status=404)
 
-    serializer = PatientDetailSerializer(patient)
+    serializer = PatientDetailSerializer(patient, context={'request': request})
     return Response(serializer.data)
 
 
@@ -162,11 +162,52 @@ def update_visit(request, visit_id):
     data = request.data.copy()
     data.pop('patient_id', None)  # Remove patient_id if present
 
-    serializer = VisitHistorySerializer(visit, data=data, partial=True)
+    # Update prescriptions if provided
+    if 'prescriptions' in request.data or 'prescription' in request.data:
+        prescription_data = request.data.get('prescriptions')
+        single_prescription = request.data.get('prescription')
+
+        visit.prescriptions.all().delete()
+        if prescription_data:
+            if isinstance(prescription_data, str):
+                try:
+                    prescription_data = json.loads(prescription_data)
+                except json.JSONDecodeError:
+                    lines = [line.strip() for line in prescription_data.splitlines() if line.strip()]
+                    prescription_data = [{'medicine_name': line, 'instructions': ''} for line in lines]
+            if isinstance(prescription_data, list):
+                for p in prescription_data:
+                    if isinstance(p, dict):
+                        Prescription.objects.create(visit=visit, **p)
+                    elif isinstance(p, str) and p.strip():
+                        Prescription.objects.create(visit=visit, medicine_name=p.strip(), instructions='')
+        elif single_prescription:
+            if isinstance(single_prescription, str):
+                lines = [line.strip() for line in single_prescription.splitlines() if line.strip()]
+                for line in lines:
+                    Prescription.objects.create(visit=visit, medicine_name=line, instructions='')
+            elif isinstance(single_prescription, list):
+                for p in single_prescription:
+                    if isinstance(p, dict):
+                        Prescription.objects.create(visit=visit, **p)
+                    elif isinstance(p, str) and p.strip():
+                        Prescription.objects.create(visit=visit, medicine_name=p.strip(), instructions='')
+
+    serializer = VisitHistorySerializer(visit, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
+
+
+@api_view(['DELETE'])
+def delete_visit(request, visit_id):
+    try:
+        visit = VisitHistory.objects.get(id=visit_id)
+        visit.delete()
+        return Response({'message': 'Visit deleted successfully.'}, status=status.HTTP_200_OK)
+    except VisitHistory.DoesNotExist:
+        return Response({'error': 'Visit not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 #login view
