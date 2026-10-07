@@ -1,0 +1,1450 @@
+/* ==========================================================================
+   DentalCare Clinic Management System - Flutter Material Design Theme
+   Replicates the exact UI/UX of Flutter GUI (programs/clinic/lib)
+   ========================================================================== */
+
+/* --- Material Tokens & Color Palette --- */
+:root {
+  /* Flutter Teal Theme Palette (ThemeData(primarySwatch: Colors.teal)) */
+  --md-primary: #00796b;
+  --md-primary-light: #009688;
+  --md-primary-dark: #004d40;
+  --md-primary-container: #e0f2f1;
+  --md-on-primary-container: #004d40;
+  
+  --md-teal-50: #e0f2f1;
+  --md-teal-100: #b2dfdb;
+  --md-orange-50: #fff3e0;
+  --md-orange-100: #ffe0b2;
+
+  --md-green: #2e7d32;
+  --md-green-light: #4caf50;
+  --md-green-accent: #a7f3d0;
+  --md-on-green-accent: #064e3b;
+
+  --md-blue: #1976d2;
+  --md-blue-light: #2196f3;
+  --md-error: #d32f2f;
+  --md-error-light: #ef4444;
+
+  /* Surfaces & Backgrounds - Light Theme (Default Flutter) */
+  --bg-app: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-surface-variant: #f8fafc;
+  --bg-input: #ffffff;
+  --bg-dialog: #ffffff;
+  --bg-drawer: #ffffff;
+
+  --border-color: #cbd5e1;
+  --border-focus: #00796b;
+  --divider-color: #e2e8f0;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-subtle: #64748b;
+  --text-on-primary: #ffffff;
+
+  /* Elevations & Shadows */
+  --shadow-appbar: 0 2px 4px -1px rgba(0, 0, 0, 0.16), 0 4px 5px 0 rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-btn: 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-btn-hover: 0 4px 8px -2px rgba(0, 0, 0, 0.25);
+  --shadow-dialog: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  --shadow-drawer: 4px 0 16px rgba(0, 0, 0, 0.2);
+
+  /* Geometry & Typography */
+  --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --appbar-height: 56px;
+  --drawer-width: 304px;
+  --transition-speed: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Dark Theme Variant --- */
+[data-theme="dark"] {
+  --bg-app: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-variant: #0f172a;
+  --bg-input: #0f172a;
+  --bg-dialog: #1e293b;
+  --bg-drawer: #1e293b;
+
+  --border-color: #334155;
+  --border-focus: #14b8a6;
+  --divider-color: #334155;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-subtle: #64748b;
+  --text-on-primary: #ffffff;
+
+  --md-teal-50: rgba(20, 184, 166, 0.15);
+  --md-orange-50: rgba(245, 158, 11, 0.15);
+  --md-green-accent: rgba(16, 185, 129, 0.2);
+  --md-on-green-accent: #34d399;
+
+  --shadow-appbar: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-dialog: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+  --shadow-drawer: 4px 0 20px rgba(0, 0, 0, 0.6);
+}
+
+/* --- Base & Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  height: 100vh;
+}
+
+/* App Root Viewport */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   FLUTTER MATERIAL APPBAR
+   ========================================================================== */
+.flutter-appbar {
+  height: var(--appbar-height);
+  background-color: var(--md-primary);
+  color: var(--text-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  box-shadow: var(--shadow-appbar);
+  z-index: 40;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.appbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.appbar-title-group {
+  display: flex;
+  align-items: center;
+}
+
+.appbar-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+/* Appbar Direct Nav Shortcuts */
+.appbar-nav-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 1rem;
+}
+
+.appbar-nav-tab {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+
+.appbar-nav-tab:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.appbar-nav-tab.active {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.appbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appbar-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.15);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.user-role-badge {
+  background-color: #ffffff;
+  color: var(--md-primary-dark);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Icon Buttons (Material Hover Circles) */
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background-color var(--transition-speed);
+}
+
+.icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.icon-button:active {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="light"] .flutter-panel .icon-button:hover,
+[data-theme="light"] .flutter-dialog .icon-button:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .flutter-panel .icon-button:hover,
+[data-theme="dark"] .flutter-dialog .icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   FLUTTER MATERIAL DRAWER
+   ========================================================================== */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-speed), visibility var(--transition-speed);
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.flutter-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--drawer-width);
+  background-color: var(--bg-drawer);
+  box-shadow: var(--shadow-drawer);
+  z-index: 60;
+  transform: translateX(-100%);
+  transition: transform var(--transition-speed);
+  display: flex;
+  flex-direction: column;
+}
+
+.flutter-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  background-color: var(--md-primary);
+  color: #ffffff;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.drawer-header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.drawer-header-text h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 0.15rem;
+}
+
+.drawer-header-text p {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.drawer-list {
+  flex: 1;
+  padding: 0.5rem 0;
+  overflow-y: auto;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.85rem 1.5rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  border-left: 4px solid transparent;
+}
+
+.drawer-item:hover {
+  background-color: rgba(0, 121, 107, 0.08);
+}
+
+.drawer-item.active {
+  background-color: rgba(0, 121, 107, 0.12);
+  color: var(--md-primary);
+  border-left-color: var(--md-primary);
+  font-weight: 600;
+}
+
+.drawer-item-icon {
+  font-size: 1.15rem;
+  width: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.drawer-item.active .drawer-item-icon {
+  color: var(--md-primary);
+}
+
+.drawer-divider {
+  height: 1px;
+  background-color: var(--divider-color);
+  margin: 0.5rem 0;
+}
+
+.drawer-footer {
+  padding: 1rem 1.5rem;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  border-top: 1px solid var(--divider-color);
+}
+
+/* ==========================================================================
+   MAIN VIEWPORT & ROUTE PANES
+   ========================================================================== */
+.main-viewport {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.route-pane {
+  display: none;
+  flex: 1;
+  padding: 0.75rem;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.route-pane.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.route-pane.centered-layout {
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   FLUTTER MATERIAL BUTTONS & FORM INPUTS
+   ========================================================================== */
+.elevated-button {
+  font-family: var(--font-family);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  transition: all var(--transition-speed);
+  text-decoration: none;
+  letter-spacing: 0.25px;
+}
+
+.elevated-button:hover {
+  box-shadow: var(--shadow-btn-hover);
+  transform: translateY(-1px);
+}
+
+.elevated-button:active {
+  box-shadow: var(--shadow-btn);
+  transform: translateY(0);
+}
+
+/* Button Color Variants */
+.btn-teal {
+  background-color: var(--md-primary);
+  color: #ffffff;
+}
+.btn-teal:hover {
+  background-color: var(--md-primary-light);
+}
+
+.btn-green {
+  background-color: var(--md-green);
+  color: #ffffff;
+}
+.btn-green:hover {
+  background-color: var(--md-green-light);
+}
+
+.btn-light-green {
+  background-color: var(--md-green-accent);
+  color: var(--md-on-green-accent);
+  font-weight: 600;
+}
+.btn-light-green:hover {
+  background-color: #6ee7b7;
+}
+
+.btn-red {
+  background-color: var(--md-error);
+  color: #ffffff;
+}
+.btn-red:hover {
+  background-color: var(--md-error-light);
+}
+
+.btn-blue {
+  background-color: var(--md-blue);
+  color: #ffffff;
+}
+.btn-blue:hover {
+  background-color: var(--md-blue-light);
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface-variant);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+.btn-secondary:hover {
+  background-color: var(--border-color);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+.fixed-btn-180 {
+  width: 180px;
+}
+
+.text-button {
+  background: transparent;
+  border: none;
+  color: var(--md-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.text-button:hover {
+  background-color: rgba(0, 121, 107, 0.08);
+}
+
+/* Flutter Form Fields */
+.form-field-group {
+  margin-bottom: 0.9rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+
+.flutter-input, .flutter-select, .flutter-textarea {
+  font-family: var(--font-family);
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  outline: none;
+  transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.flutter-input:focus, .flutter-select:focus, .flutter-textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(0, 121, 107, 0.2);
+}
+
+.flutter-textarea {
+  resize: vertical;
+}
+
+/* Custom Interactive Date Input with Decorator */
+.input-decorator-date {
+  display: flex;
+  align-items: center;
+  position: relative;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--transition-speed);
+}
+
+.input-decorator-date:hover {
+  border-color: var(--md-primary);
+}
+
+.decorator-icon {
+  color: var(--md-primary);
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.date-native-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.dob-display-text {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Flutter Card Container */
+.flutter-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+}
+
+.flutter-divider {
+  border: none;
+  height: 2px;
+  background-color: var(--divider-color);
+  margin: 1.25rem 0;
+}
+
+/* ==========================================================================
+   ROUTE 1: LOGIN CARD (login.dart)
+   ========================================================================== */
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 2.25rem 2rem;
+}
+
+.login-brand-box {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-brand-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--md-teal-50);
+  color: var(--md-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  margin: 0 auto 0.75rem;
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.login-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+  margin-top: 0.25rem;
+}
+
+.demo-login-bar {
+  background-color: var(--bg-surface-variant);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.demo-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+}
+
+.demo-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chip-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all var(--transition-speed);
+}
+
+.chip-btn:hover {
+  background-color: var(--md-teal-50);
+  border-color: var(--md-primary);
+  color: var(--md-primary-dark);
+}
+
+/* ==========================================================================
+   ROUTE 2: DOCTOR DESK 3-COLUMN WORKSPACE (doctor.dart)
+   Exact Row(children: [ Expanded(flex: 1), Expanded(flex: 1), Expanded(flex: 3) ])
+   ========================================================================== */
+.doctor-three-columns {
+  display: flex;
+  gap: 0.5rem;
+  height: 100%;
+  flex: 1;
+}
+
+.doctor-panel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.col-search {
+  flex: 1;
+  min-width: 240px;
+  max-width: 300px;
+}
+
+.col-details {
+  flex: 1.6;
+  min-width: 330px;
+}
+
+.col-history {
+  flex: 1.1;
+  min-width: 270px;
+  max-width: 360px;
+}
+
+.panel-heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.1px;
+}
+
+.sub-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+/* Search Box with Icon and Clear Button */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 2.25rem;
+  padding-right: 2rem;
+}
+
+.clear-input-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: none;
+}
+
+.clear-input-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Patient List View */
+.patient-list-view {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid var(--divider-color);
+}
+
+.patient-list-item {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--divider-color);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-list-item:hover {
+  background-color: var(--md-teal-50);
+}
+
+.patient-list-item.selected {
+  background-color: rgba(0, 121, 107, 0.15);
+  border-left: 3px solid var(--md-primary);
+}
+
+.patient-list-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.patient-list-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+.empty-list-notice, .empty-patient-selection, .empty-history-notice, .empty-editor-notice {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-subtle);
+  font-size: 0.85rem;
+}
+
+.panel-bottom-action {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+/* Patient Details & Add Visit Middle Panel */
+.active-patient-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.patient-details-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.details-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.detail-line {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: inline-block;
+  min-width: 75px;
+}
+
+.op-chip {
+  background-color: var(--md-teal-50);
+  color: var(--md-primary);
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-xs);
+  display: inline-block;
+}
+
+.text-green {
+  color: var(--md-green) !important;
+  font-weight: 700;
+}
+
+/* File Attached Indicator Badge */
+.file-attached-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--md-green-accent);
+  color: var(--md-on-green-accent);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.file-name-text {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-file-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Action Buttons Centered Column */
+.action-buttons-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Visit History Right Panel */
+.history-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.counter-badge {
+  background-color: var(--md-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+}
+
+.visit-history-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+/* Individual Visit Card */
+.visit-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.5rem;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.visit-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.visit-card-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.visit-details-left {
+  flex: 1;
+  min-width: 0; /* Prevents overflow */
+}
+
+.visit-date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 0.3rem;
+}
+
+[data-theme="dark"] .visit-date-badge {
+  color: #94a3b8;
+}
+
+.visit-reason-text {
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.visit-prescription-box {
+  font-size: 0.78rem;
+  color: #004d40;
+  background-color: var(--md-teal-50);
+  border-left: 3px solid var(--md-primary);
+  padding: 0.35rem 0.55rem;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .visit-prescription-box {
+  color: #5eead4;
+}
+
+.visit-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.visit-actions-right .icon-button {
+  width: 32px;
+  height: 32px;
+  font-size: 0.95rem;
+}
+
+.xray-thumbnail-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  padding: 0;
+  background: #000;
+  display: inline-flex;
+}
+
+.xray-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   ROUTE 3: RECEPTION HOME (reception_home.dart)
+   ========================================================================== */
+.reception-home-card {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.card-icon-hero {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: var(--md-teal-50);
+  color: var(--md-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.25rem;
+  margin: 0 auto 1.25rem;
+}
+
+.card-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.card-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-subtle);
+  margin-bottom: 2rem;
+}
+
+.reception-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   ROUTE 4: REGISTER PATIENT (register.dart)
+   ========================================================================== */
+.form-container-600 {
+  width: 100%;
+  max-width: 600px;
+  padding: 2rem;
+}
+
+.form-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.form-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.form-submit-row {
+  margin-top: 1.5rem;
+}
+
+/* ==========================================================================
+   ROUTE 5: SEARCH & EDIT (search_edit.dart)
+   ========================================================================== */
+.search-edit-layout {
+  display: flex;
+  gap: 0.75rem;
+  height: 100%;
+  flex: 1;
+}
+
+.search-panel-col {
+  flex: 1;
+  min-width: 280px;
+}
+
+.editor-panel-col {
+  flex: 2;
+  min-width: 400px;
+}
+
+.editor-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.op-grey-badge {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   ROUTE 6: REPORTS & ANALYTICS (report.dart)
+   ========================================================================== */
+.reports-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.reports-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.filter-box label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--text-secondary);
+}
+
+.input-with-button {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.range-date-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.range-sep {
+  color: var(--text-subtle);
+  font-size: 0.85rem;
+}
+
+/* Modern Flutter-style Table */
+.flutter-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.flutter-table th {
+  background-color: var(--bg-surface-variant);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--divider-color);
+}
+
+.flutter-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--divider-color);
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.flutter-table tr:hover {
+  background-color: rgba(0, 121, 107, 0.04);
+}
+
+.empty-table-cell {
+  text-align: center;
+  padding: 2.5rem 1rem !important;
+  color: var(--text-subtle);
+}
+
+.table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   ROUTE 7: ADMIN & USER MANAGEMENT (usermanagment.dart)
+   ========================================================================== */
+.user-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-roster-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  background-color: var(--bg-surface-variant);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+}
+
+.user-roster-username {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+/* ==========================================================================
+   FLUTTER MATERIAL DIALOGS & ALERTS
+   ========================================================================== */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.flutter-dialog {
+  background-color: var(--bg-dialog);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
+  width: 100%;
+  animation: zoomIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.alert-dialog-card {
+  max-width: 420px;
+  padding: 1.5rem;
+}
+
+.edit-visit-dialog-card {
+  max-width: 500px;
+  padding: 1.5rem;
+}
+
+.xray-viewer-dialog-card {
+  max-width: 800px;
+  padding: 1.25rem;
+}
+
+.dialog-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.dialog-title-row h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.dialog-content-body {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.dialog-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Interactive X-Ray Lightbox */
+.xray-image-container {
+  height: 460px;
+  background: #000000;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.xray-interactive-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.xray-interactive-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+
+.xray-controls-row {
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ==========================================================================
+   FLUTTER SNACKBAR (Get.snackbar Bottom Floating Toast)
+   ========================================================================== */
+.snackbar-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.flutter-snackbar {
+  pointer-events: auto;
+  min-width: 320px;
+  max-width: 480px;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideUp 0.25s ease-out;
+}
+
+.flutter-snackbar.success {
+  background-color: var(--md-green);
+}
+
+.flutter-snackbar.error {
+  background-color: var(--md-error);
+}
+
+.flutter-snackbar.warning {
+  background-color: #e65100;
+}
+
+.flutter-snackbar.info {
+  background-color: #0284c7;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Tablets & Mobile)
+   ========================================================================== */
+@media (max-width: 992px) {
+  .doctor-three-columns {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .col-search, .col-details, .col-history {
+    min-width: 100%;
+    flex: none;
+  }
+
+  .search-edit-layout {
+    flex-direction: column;
+  }
+
+  .appbar-nav-shortcuts {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .flutter-appbar {
+    padding: 0 0.5rem;
+  }
+
+  .appbar-title {
+    font-size: 1.05rem;
+  }
+
+  .appbar-user-pill span {
+    display: none;
+  }
+
+  .form-container-600 {
+    padding: 1.25rem;
+  }
+}

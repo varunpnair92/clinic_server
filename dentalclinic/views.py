@@ -9,8 +9,9 @@ from django.db.models import Q
 from datetime import datetime
 from .models import *
 from .serializers import *
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import parser_classes
+from django.shortcuts import render
 
 
 @api_view(['POST'])
@@ -62,10 +63,10 @@ def search_patient(request):
         return Response([], status=200)
 
     patients = Patient.objects.filter(
-        Q(name__istartswith=query) |
-        Q(phone__istartswith=query) |
-        Q(op_number__istartswith=query)
-    ).distinct()
+        Q(name__icontains=query) |
+        Q(phone__icontains=query) |
+        Q(op_number__icontains=query)
+    ).distinct()[:50]
 
     if not patients.exists():
         return Response({'message': 'No patients found'}, status=404)
@@ -85,7 +86,7 @@ def summary_by_day(request):
         return Response({'error': 'Invalid date format'}, status=400)
 
     visits = VisitHistory.objects.filter(visit_date__date=date)
-    serializer = VisitHistorySerializer(visits, many=True)
+    serializer = VisitHistorySerializer(visits, many=True, context={'request': request})
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -99,7 +100,7 @@ def summary_between_dates(request):
         return Response({'error': 'Invalid date format'}, status=400)
 
     visits = VisitHistory.objects.filter(visit_date__date__range=(start_date, end_date))
-    serializer = VisitHistorySerializer(visits, many=True)
+    serializer = VisitHistorySerializer(visits, many=True, context={'request': request})
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -115,7 +116,7 @@ def summary_by_patient(request, patient_id):
 
 
 @api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def add_visit(request):
     patient_id = request.data.get('patient_id')
     reason = request.data.get('reason')
@@ -254,3 +255,59 @@ def delete_patient(request, patient_id):
         return Response({'message': 'Patient deleted successfully.'}, status=status.HTTP_200_OK)
     except Patient.DoesNotExist:
         return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+def recent_visits(request):
+    """
+    Get most recent clinic visits with patient details.
+    Query param: limit (default 20, max 100).
+    """
+    try:
+        limit = min(int(request.GET.get('limit', 20)), 100)
+    except (ValueError, TypeError):
+        limit = 20
+
+    visits = (
+        VisitHistory.objects
+        .select_related('patient')
+        .prefetch_related('prescriptions')
+        .order_by('-visit_date')[:limit]
+    )
+    serializer = VisitHistorySerializer(visits, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def clinic_stats(request):
+    """
+    Returns quick clinic overview stats.
+    """
+    from datetime import date
+    today = date.today()
+    total_patients = Patient.objects.count()
+    today_visits = VisitHistory.objects.filter(visit_date__date=today).count()
+    total_visits = VisitHistory.objects.count()
+    return Response({
+        'total_patients': total_patients,
+        'today_visits': today_visits,
+        'total_visits': total_visits,
+    })
+
+
+@api_view(['GET'])
+def list_users(request):
+    """
+    List staff accounts (excluding password hashes).
+    """
+    users = AppUser.objects.all().order_by('role', 'username')
+    data = [{'id': u.id, 'username': u.username, 'role': u.role} for u in users]
+    return Response(data)
+
+
+def app_view(request):
+    """
+    Renders the Single Page Application clinic dashboard.
+    """
+    return render(request, 'index.html')
+

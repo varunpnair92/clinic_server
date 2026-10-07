@@ -1,0 +1,814 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinic Patient Management - DentalCare</title>
+  <meta name="description" content="Dental Clinic Management System - Web GUI replicating Flutter Patient Management App.">
+
+  <!-- Material Google Fonts: Roboto & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome 6 Icons (matching Material & Flutter Icons) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Flutter Material Theme Stylesheet -->
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+  <!-- Full App Shell -->
+  <div class="app-root" id="app-root">
+
+    <!-- ====================================================================
+         FLUTTER MATERIAL APPBAR (Teal, 56px, Elevation)
+         ==================================================================== -->
+    <header class="flutter-appbar" id="flutter-appbar">
+      <div class="appbar-left">
+        <!-- Drawer Hamburger Icon -->
+        <button type="button" class="icon-button appbar-action" id="btn-toggle-drawer" onclick="toggleDrawer()" title="Open Navigation Drawer">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="appbar-title-group">
+          <h1 class="appbar-title" id="appbar-title">Clinic Patient Management</h1>
+        </div>
+      </div>
+
+      <!-- Topbar Navigation Shortcuts (Direct Tabs) -->
+      <nav class="appbar-nav-shortcuts" id="appbar-nav-shortcuts">
+        <button type="button" class="appbar-nav-tab active" data-route="/doctor" onclick="navigateTo('/doctor')">
+          <i class="fas fa-user-md"></i> Doctor
+        </button>
+        <button type="button" class="appbar-nav-tab" data-route="/reception" onclick="navigateTo('/reception')">
+          <i class="fas fa-clipboard-user"></i> Reception
+        </button>
+        <button type="button" class="appbar-nav-tab" data-route="/register" onclick="navigateTo('/register')">
+          <i class="fas fa-user-plus"></i> Register
+        </button>
+        <button type="button" class="appbar-nav-tab" data-route="/search" onclick="navigateTo('/search')">
+          <i class="fas fa-search"></i> Search & Edit
+        </button>
+        <button type="button" class="appbar-nav-tab" data-route="/reports" onclick="navigateTo('/reports')">
+          <i class="fas fa-chart-line"></i> Reports
+        </button>
+        <button type="button" class="appbar-nav-tab" data-route="/admin" onclick="navigateTo('/admin')">
+          <i class="fas fa-shield-halved"></i> Admin
+        </button>
+      </nav>
+
+      <div class="appbar-right">
+        <!-- Current User Role Badge -->
+        <div class="appbar-user-pill" id="appbar-user-pill" title="Active Account">
+          <i class="fas fa-circle-user"></i>
+          <span id="appbar-username">Doctor</span>
+          <span class="user-role-badge" id="appbar-role-badge">doctor</span>
+        </div>
+
+        <!-- Theme Toggle (Light / Dark) -->
+        <button type="button" class="icon-button appbar-action" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+          <i class="fas fa-moon" id="theme-toggle-icon"></i>
+        </button>
+
+        <!-- Logout Action -->
+        <button type="button" class="icon-button appbar-action" onclick="handleLogout()" title="Logout">
+          <i class="fas fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         FLUTTER DRAWER (Slide-in Navigation Drawer)
+         ==================================================================== -->
+    <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+    <aside class="flutter-drawer" id="flutter-drawer">
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div class="drawer-header-icon">
+          <i class="fas fa-tooth"></i>
+        </div>
+        <div class="drawer-header-text">
+          <h2 id="drawer-header-title">Doctor Panel</h2>
+          <p id="drawer-user-info">Logged in as: Doctor</p>
+        </div>
+      </div>
+
+      <!-- Drawer List Items (Matching Flutter Drawer & Routes) -->
+      <nav class="drawer-list">
+        <div class="drawer-item" data-route="/doctor" onclick="navigateTo('/doctor')">
+          <i class="fas fa-stethoscope drawer-item-icon"></i>
+          <span>Doctor Desk</span>
+        </div>
+
+        <div class="drawer-item" data-route="/reception" onclick="navigateTo('/reception')">
+          <i class="fas fa-desktop drawer-item-icon"></i>
+          <span>Receptionist Panel</span>
+        </div>
+
+        <div class="drawer-item" data-route="/register" onclick="navigateTo('/register')">
+          <i class="fas fa-user-plus drawer-item-icon"></i>
+          <span>Register New Patient</span>
+        </div>
+
+        <div class="drawer-item" data-route="/search" onclick="navigateTo('/search')">
+          <i class="fas fa-user-pen drawer-item-icon"></i>
+          <span>Search & Edit Patient</span>
+        </div>
+
+        <div class="drawer-item" data-route="/reports" onclick="navigateTo('/reports')">
+          <i class="fas fa-chart-column drawer-item-icon"></i>
+          <span>Reports</span>
+        </div>
+
+        <div class="drawer-item" data-route="/admin" onclick="navigateTo('/admin')">
+          <i class="fas fa-user-shield drawer-item-icon"></i>
+          <span>Admin & User Management</span>
+        </div>
+
+        <div class="drawer-divider"></div>
+
+        <div class="drawer-item" onclick="handleLogout()">
+          <i class="fas fa-arrow-right-from-bracket drawer-item-icon" style="color: var(--md-error);"></i>
+          <span style="color: var(--md-error);">Logout</span>
+        </div>
+      </nav>
+
+      <div class="drawer-footer">
+        <span>DentalCare Clinic v2.0 (Flutter Web)</span>
+      </div>
+    </aside>
+
+    <!-- ====================================================================
+         MAIN BODY: DYNAMIC ROUTE PANES (Matching Flutter Routes)
+         ==================================================================== -->
+    <main class="main-viewport" id="main-viewport">
+
+      <!-- ================================================================
+           ROUTE: / (Login Page - login.dart)
+           ================================================================ -->
+      <section class="route-pane centered-layout" id="pane-login" style="display: none;">
+        <div class="flutter-card login-card">
+          <div class="login-brand-box">
+            <div class="login-brand-icon">
+              <i class="fas fa-tooth"></i>
+            </div>
+            <h2 class="login-title">Clinic Login</h2>
+            <p class="login-subtitle">Dental Patient Management System</p>
+          </div>
+
+          <!-- Demo Quick Credentials (Fast Testing) -->
+          <div class="demo-login-bar">
+            <span class="demo-label">Quick Sign-in:</span>
+            <div class="demo-chips">
+              <button type="button" class="chip-btn" onclick="fillDemoCredentials('v', 'doctor')">
+                <i class="fas fa-user-md"></i> Doctor (v)
+              </button>
+              <button type="button" class="chip-btn" onclick="fillDemoCredentials('r', 'receptionist')">
+                <i class="fas fa-clipboard-user"></i> Reception (r)
+              </button>
+              <button type="button" class="chip-btn" onclick="fillDemoCredentials('admin', 'admin')">
+                <i class="fas fa-shield-halved"></i> Admin (admin)
+              </button>
+            </div>
+          </div>
+
+          <form id="form-login" onsubmit="handleLoginSubmit(event)">
+            <div class="form-field-group">
+              <label for="login-username">Username</label>
+              <input type="text" id="login-username" class="flutter-input" placeholder="Enter username" required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-field-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" class="flutter-input" placeholder="Enter password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="elevated-button btn-teal btn-block" id="btn-login-submit" style="margin-top: 1rem;">
+              <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /doctor (Doctor Page - doctor.dart)
+           Exact 3-Column Layout: Search (flex: 1) | Details & Add Visit (flex: 1) | History (flex: 3)
+           ================================================================ -->
+      <section class="route-pane active" id="pane-doctor">
+        <div class="doctor-three-columns">
+
+          <!-- COLUMN 1: Search Panel (flex: 1) -->
+          <div class="doctor-panel col-search">
+            <h3 class="panel-heading">Search</h3>
+
+            <div class="panel-input-box">
+              <div class="search-input-wrapper">
+                <i class="fas fa-search search-input-icon"></i>
+                <input type="text" id="doc-search-input" class="flutter-input search-input" placeholder="Name / Phone / OP" oninput="handleDoctorSearch(this.value)" autocomplete="off" autofocus>
+                <button type="button" class="clear-input-btn" id="btn-clear-search" onclick="clearDoctorSearch()" title="Clear">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Matching Patients ListView -->
+            <div class="patient-list-view" id="doc-patient-list">
+              <div class="empty-list-notice">
+                <i class="fas fa-search" style="font-size: 1.75rem; opacity: 0.4; margin-bottom: 0.5rem; display: block;"></i>
+                Type name, phone or OP number above to search patients.
+              </div>
+            </div>
+
+            <!-- Register Button at Bottom -->
+            <div class="panel-bottom-action">
+              <button type="button" class="elevated-button btn-teal btn-block" onclick="navigateTo('/reception')">
+                <i class="fas fa-user-plus"></i> Register
+              </button>
+            </div>
+          </div>
+
+          <!-- COLUMN 2: Patient Info + Add Visit (flex: 1) -->
+          <div class="doctor-panel col-details" id="doc-patient-details-panel">
+            <div class="empty-patient-selection" id="doc-empty-patient-placeholder">
+              <i class="fas fa-user-injured" style="font-size: 2.5rem; opacity: 0.35; margin-bottom: 0.75rem;"></i>
+              <h4>No Patient Selected</h4>
+              <p>Select a patient from the search list on the left.</p>
+            </div>
+
+            <!-- Active Patient Info Container -->
+            <div class="active-patient-content" id="doc-active-patient-content" style="display: none;">
+              <div class="patient-details-scroll">
+
+                <!-- Patient Demographics Header -->
+                <div class="patient-details-header">
+                  <h3 class="panel-heading" style="margin-bottom: 0.75rem;">Patient Details</h3>
+                  <div class="details-rows">
+                    <p class="detail-line"><strong class="detail-label">op Number:</strong> <span class="op-chip" id="doc-patient-op">N/A</span></p>
+                    <p class="detail-line"><strong class="detail-label">Name:</strong> <span id="doc-patient-name" style="font-weight: 600;">N/A</span></p>
+                    <p class="detail-line"><strong class="detail-label">Age:</strong> <span id="doc-patient-age">N/A</span></p>
+                    <p class="detail-line"><strong class="detail-label">Gender:</strong> <span id="doc-patient-gender">N/A</span></p>
+                    <p class="detail-line"><strong class="detail-label">Phone:</strong> <span id="doc-patient-phone">N/A</span></p>
+                    <p class="detail-line"><strong class="detail-label">Address:</strong> <span id="doc-patient-address">N/A</span></p>
+                    <p class="detail-line last-visit-line">
+                      <strong class="detail-label">last visit:</strong> 
+                      <span id="doc-patient-last-visit" class="text-green">N/A</span>
+                    </p>
+                  </div>
+                </div>
+
+                <hr class="flutter-divider">
+
+                <!-- Add Visit Section -->
+                <div class="add-visit-section">
+                  <h4 class="sub-heading">Add Visit</h4>
+
+                  <div class="form-field-group">
+                    <label for="doc-visit-remarks">Remarks</label>
+                    <textarea id="doc-visit-remarks" class="flutter-textarea" rows="3" placeholder="Enter clinical remarks or diagnosis..."></textarea>
+                  </div>
+
+                  <div class="form-field-group">
+                    <label for="doc-visit-prescription">Prescription</label>
+                    <textarea id="doc-visit-prescription" class="flutter-textarea" rows="3" placeholder="e.g. Paracetamol 500mg - 1-0-1&#10;Amoxicillin 500mg - 1-1-1"></textarea>
+                  </div>
+
+                  <!-- X-Ray File Selection State Indicator -->
+                  <div id="xray-selected-badge" class="file-attached-badge" style="display: none;">
+                    <i class="fas fa-image"></i>
+                    <span id="xray-selected-filename" class="file-name-text">xray.jpg</span>
+                    <button type="button" class="remove-file-btn" onclick="clearSelectedXray()" title="Remove file">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <!-- Centered Action Buttons (exact widths & colors from Flutter doctor.dart) -->
+                  <div class="action-buttons-column">
+                    <!-- Hidden File Input for X-Ray -->
+                    <input type="file" id="xray-file-input" accept="image/*" style="display: none;" onchange="handleXrayFileChosen(event)">
+
+                    <!-- Pick X-Ray Button (greenAccent) -->
+                    <button type="button" class="elevated-button btn-light-green fixed-btn-180" onclick="triggerXrayPicker()">
+                      <i class="fas fa-upload"></i> Pick X-Ray
+                    </button>
+
+                    <!-- Add Visit Button (green) -->
+                    <button type="button" class="elevated-button btn-green fixed-btn-180" id="btn-add-visit" onclick="handleAddVisitSubmit()">
+                      <i class="fas fa-plus"></i> Add Visit
+                    </button>
+
+                    <!-- Delete Patient Button (red) -->
+                    <button type="button" class="elevated-button btn-red fixed-btn-180" onclick="openDeletePatientDialog()">
+                      <i class="fas fa-trash-can"></i> Delete Patient
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUMN 3: Visit History (flex: 3) -->
+          <div class="doctor-panel col-history">
+            <div class="history-panel-header">
+              <h3 class="panel-heading">Visit History</h3>
+              <span class="counter-badge" id="doc-history-count-badge">0</span>
+            </div>
+
+            <!-- Scrollable Visit History Cards List -->
+            <div class="visit-history-scroll" id="doc-visit-history-list">
+              <div class="empty-history-notice" id="doc-empty-history-notice">
+                <i class="fas fa-file-medical" style="font-size: 2.2rem; opacity: 0.35; margin-bottom: 0.5rem; display: block;"></i>
+                No visits recorded for this patient yet.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /reception (Receptionist Home - reception_home.dart)
+           ================================================================ -->
+      <section class="route-pane centered-layout" id="pane-reception" style="display: none;">
+        <div class="flutter-card reception-home-card">
+          <div class="card-icon-hero">
+            <i class="fas fa-hospital-user"></i>
+          </div>
+          <h2 class="card-title">Receptionist Panel</h2>
+          <p class="card-subtitle">Register new arrivals or search existing patient medical records.</p>
+
+          <div class="reception-action-buttons">
+            <button type="button" class="elevated-button btn-teal btn-large" onclick="navigateTo('/register')">
+              <i class="fas fa-user-plus"></i> Register Patient
+            </button>
+
+            <button type="button" class="elevated-button btn-teal btn-large" onclick="navigateTo('/search')">
+              <i class="fas fa-search"></i> Search Patient
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /register (Register Patient - register.dart)
+           Centered Form (max-width 600px): Name, Age, DOB Picker, Gender, Phone, Address, Submit
+           ================================================================ -->
+      <section class="route-pane centered-layout" id="pane-register" style="display: none;">
+        <div class="flutter-card form-container-600">
+          <div class="form-header-bar">
+            <h2 class="form-title">Register New Patient</h2>
+            <button type="button" class="icon-button" onclick="navigateTo('/reception')" title="Back">
+              <i class="fas fa-arrow-left"></i>
+            </button>
+          </div>
+
+          <form id="form-register-patient" onsubmit="handleRegisterSubmit(event)">
+            <div class="form-field-group">
+              <label for="reg-name">Name *</label>
+              <input type="text" id="reg-name" class="flutter-input" placeholder="Patient Full Name" required>
+            </div>
+
+            <div class="form-field-group">
+              <label for="reg-age">Age *</label>
+              <input type="number" id="reg-age" class="flutter-input" placeholder="Age" min="0" max="130" step="1" required>
+            </div>
+
+            <!-- Date of Birth Picker Widget -->
+            <div class="form-field-group">
+              <label for="reg-dob">Date of Birth (Auto-updates Age)</label>
+              <div class="input-decorator-date" onclick="document.getElementById('reg-dob').showPicker ? document.getElementById('reg-dob').showPicker() : document.getElementById('reg-dob').focus()">
+                <i class="fas fa-calendar-days decorator-icon"></i>
+                <input type="date" id="reg-dob" class="flutter-input date-native-input" onchange="handleDobSelected(this.value, 'reg')">
+                <span id="reg-dob-display-label" class="dob-display-text">Select Date</span>
+              </div>
+            </div>
+
+            <!-- Gender Dropdown -->
+            <div class="form-field-group">
+              <label for="reg-gender">Gender *</label>
+              <select id="reg-gender" class="flutter-select" required>
+                <option value="Male" selected>Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-field-group">
+              <label for="reg-phone">Phone *</label>
+              <input type="tel" id="reg-phone" class="flutter-input" placeholder="10-digit Phone Number" required>
+            </div>
+
+            <div class="form-field-group">
+              <label for="reg-address">Address</label>
+              <input type="text" id="reg-address" class="flutter-input" placeholder="Residential Address / City">
+            </div>
+
+            <div class="form-submit-row">
+              <button type="submit" class="elevated-button btn-teal btn-block" id="btn-submit-registration">
+                <i class="fas fa-check"></i> Submit
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /search (Search & Edit - search_edit.dart)
+           2 Columns: Left Search Panel (flex: 1) | Right Patient Editor (flex: 2)
+           ================================================================ -->
+      <section class="route-pane" id="pane-search" style="display: none;">
+        <div class="search-edit-layout">
+
+          <!-- Left Search Panel (flex: 1) -->
+          <div class="doctor-panel search-panel-col">
+            <h3 class="panel-heading" style="font-size: 20px;">Search Patient</h3>
+
+            <div class="search-input-box" style="margin: 0.75rem 0;">
+              <div class="search-input-wrapper">
+                <i class="fas fa-search search-input-icon"></i>
+                <input type="text" id="search-view-query" class="flutter-input" placeholder="Name or Phone" onkeyup="if(event.key==='Enter') executePatientSearch()" autocomplete="off">
+              </div>
+              <button type="button" class="elevated-button btn-teal" style="margin-top: 0.5rem; width: 100%; justify-content: center;" onclick="executePatientSearch()">
+                <i class="fas fa-search"></i> Search
+              </button>
+            </div>
+
+            <!-- Search Results ListView -->
+            <div class="patient-list-view" id="search-view-results-list">
+              <div class="empty-list-notice">
+                Type name or phone above and click Search.
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Patient Editor Panel (flex: 2) -->
+          <div class="doctor-panel editor-panel-col">
+            <div class="empty-editor-notice" id="search-empty-editor-notice">
+              <i class="fas fa-user-pen" style="font-size: 2.2rem; opacity: 0.35; margin-bottom: 0.5rem; display: block;"></i>
+              Select a patient from the list on the left to view/edit details.
+            </div>
+
+            <div class="active-patient-editor" id="search-active-editor" style="display: none;">
+              <div class="editor-header-bar">
+                <h3 class="panel-heading" style="font-size: 20px;">Edit Patient Details</h3>
+                <span class="op-grey-badge" id="edit-patient-op-label">OP Number: #0000</span>
+              </div>
+
+              <form id="form-edit-patient" onsubmit="handlePatientUpdateSubmit(event)">
+                <input type="hidden" id="edit-patient-id">
+
+                <div class="form-field-group">
+                  <label for="edit-name">Name *</label>
+                  <input type="text" id="edit-name" class="flutter-input" required>
+                </div>
+
+                <div class="form-field-group">
+                  <label for="edit-age">Age *</label>
+                  <input type="number" id="edit-age" class="flutter-input" required>
+                </div>
+
+                <!-- Date of Birth Picker Widget -->
+                <div class="form-field-group">
+                  <label for="edit-dob">Date of Birth</label>
+                  <div class="input-decorator-date" onclick="document.getElementById('edit-dob').showPicker ? document.getElementById('edit-dob').showPicker() : document.getElementById('edit-dob').focus()">
+                    <i class="fas fa-calendar-days decorator-icon"></i>
+                    <input type="date" id="edit-dob" class="flutter-input date-native-input" onchange="handleDobSelected(this.value, 'edit')">
+                    <span id="edit-dob-display-label" class="dob-display-text">Select Date</span>
+                  </div>
+                </div>
+
+                <!-- Gender Dropdown -->
+                <div class="form-field-group">
+                  <label for="edit-gender">Gender</label>
+                  <select id="edit-gender" class="flutter-select">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div class="form-field-group">
+                  <label for="edit-phone">Phone *</label>
+                  <input type="tel" id="edit-phone" class="flutter-input" required>
+                </div>
+
+                <div class="form-field-group">
+                  <label for="edit-address">Address</label>
+                  <input type="text" id="edit-address" class="flutter-input">
+                </div>
+
+                <div class="editor-action-row" style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                  <button type="submit" class="elevated-button btn-green" style="flex: 1; justify-content: center;" id="btn-save-edit-patient">
+                    <i class="fas fa-floppy-disk"></i> Save Changes
+                  </button>
+                  <button type="button" class="elevated-button btn-red" onclick="openDeletePatientDialog(true)" title="Delete Patient Record">
+                    <i class="fas fa-trash-can"></i> Delete Patient
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /reports (Reports - report.dart)
+           Daily Summary, Between Dates, Patient Summary
+           ================================================================ -->
+      <section class="route-pane" id="pane-reports" style="display: none;">
+        <div class="reports-shell">
+          <div class="flutter-card reports-filter-card">
+            <h2 class="panel-heading" style="font-size: 24px; margin-bottom: 1.25rem;">Reports</h2>
+
+            <div class="reports-filter-grid">
+              <!-- Filter 1: Daily Summary -->
+              <div class="filter-box">
+                <label for="report-date-picker">Daily Summary</label>
+                <div class="input-with-button">
+                  <input type="date" id="report-date-picker" class="flutter-input">
+                  <button type="button" class="elevated-button btn-teal" onclick="runDailyReport()">
+                    <i class="fas fa-calendar-day"></i> Daily Summary
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filter 2: Between Dates -->
+              <div class="filter-box">
+                <label>Between Dates</label>
+                <div class="range-date-row">
+                  <input type="date" id="report-range-start" class="flutter-input" placeholder="Start Date">
+                  <span class="range-sep">to</span>
+                  <input type="date" id="report-range-end" class="flutter-input" placeholder="End Date">
+                  <button type="button" class="elevated-button btn-teal" onclick="runDateRangeReport()">
+                    <i class="fas fa-calendar-week"></i> Between Dates
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Print Button -->
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+              <button type="button" class="elevated-button btn-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i> Print Report
+              </button>
+            </div>
+          </div>
+
+          <!-- Report Results Table Card -->
+          <div class="flutter-card report-table-card" style="margin-top: 1.5rem;">
+            <div class="table-card-header">
+              <h3 id="report-results-title">Consultation Records</h3>
+              <span class="counter-badge" id="report-results-count">0</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="flutter-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Date & Time</th>
+                    <th>Patient Name</th>
+                    <th>OP#</th>
+                    <th>Remarks</th>
+                    <th>Prescriptions</th>
+                    <th>X-Ray</th>
+                  </tr>
+                </thead>
+                <tbody id="report-table-body">
+                  <tr>
+                    <td colspan="7" class="empty-table-cell">
+                      Select date above and click Daily Summary or Between Dates to load records.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           ROUTE: /admin (Admin Panel / User Management - usermanagment.dart)
+           ================================================================ -->
+      <section class="route-pane centered-layout" id="pane-admin" style="display: none;">
+        <div class="flutter-card form-container-600">
+          <div class="form-header-bar">
+            <h2 class="form-title">User Management</h2>
+          </div>
+
+          <!-- Section 1: Add New User -->
+          <div class="admin-section">
+            <h3 class="sub-heading" style="font-size: 18px; margin-bottom: 0.75rem;">Add New User</h3>
+            
+            <form id="form-admin-add-user" onsubmit="handleAdminAddUserSubmit(event)">
+              <div class="form-field-group">
+                <label for="admin-new-username">Username</label>
+                <input type="text" id="admin-new-username" class="flutter-input" placeholder="Username" required>
+              </div>
+
+              <div class="form-field-group">
+                <label for="admin-new-password">Password</label>
+                <input type="password" id="admin-new-password" class="flutter-input" placeholder="Password" required>
+              </div>
+
+              <div class="form-field-group">
+                <label for="admin-new-role">Role</label>
+                <select id="admin-new-role" class="flutter-select" required>
+                  <option value="doctor">Doctor</option>
+                  <option value="receptionist">Receptionist</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <button type="submit" class="elevated-button btn-teal" style="margin-top: 0.5rem;">
+                <i class="fas fa-user-plus"></i> Add User
+              </button>
+            </form>
+          </div>
+
+          <hr class="flutter-divider" style="margin: 1.5rem 0;">
+
+          <!-- Section 2: Change Password -->
+          <div class="admin-section">
+            <h3 class="sub-heading" style="font-size: 18px; margin-bottom: 0.75rem;">Change Password</h3>
+
+            <form id="form-admin-change-password" onsubmit="handleAdminChangePasswordSubmit(event)">
+              <div class="form-field-group">
+                <label for="admin-change-username">Username</label>
+                <input type="text" id="admin-change-username" class="flutter-input" placeholder="Username" required>
+              </div>
+
+              <div class="form-field-group">
+                <label for="admin-change-new-password">New Password</label>
+                <input type="password" id="admin-change-new-password" class="flutter-input" placeholder="New Password" required>
+              </div>
+
+              <button type="submit" class="elevated-button btn-teal" style="margin-top: 0.5rem;">
+                <i class="fas fa-key"></i> Change Password
+              </button>
+            </form>
+          </div>
+
+          <hr class="flutter-divider" style="margin: 1.5rem 0;">
+
+          <!-- Section 3: Registered Staff Roster -->
+          <div class="admin-section">
+            <h3 class="sub-heading" style="font-size: 18px; margin-bottom: 0.75rem;">Registered Staff Accounts</h3>
+            <div id="admin-user-roster-list" class="user-roster-list">
+              <!-- Populated by loadAdminUsersList() -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ====================================================================
+       FLUTTER MATERIAL DIALOGS & ALERTS (AlertDialog, Get.defaultDialog)
+       ==================================================================== -->
+
+  <!-- 1. OP Number Dialog (Patient Registered or Already Exists) -->
+  <div class="dialog-backdrop" id="dialog-op-number" style="display: none;">
+    <div class="flutter-dialog alert-dialog-card">
+      <div class="dialog-title-row">
+        <h3 id="dialog-op-title">OP Number</h3>
+      </div>
+      <div class="dialog-content-body">
+        <p id="dialog-op-message">New OP Number: #1001</p>
+      </div>
+      <div class="dialog-actions-row">
+        <button type="button" class="elevated-button btn-teal" onclick="closeOpDialog()">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Confirm Delete Patient AlertDialog -->
+  <div class="dialog-backdrop" id="dialog-delete-patient" style="display: none;">
+    <div class="flutter-dialog alert-dialog-card">
+      <div class="dialog-title-row">
+        <h3 style="color: var(--md-error);">
+          <i class="fas fa-triangle-exclamation"></i> Confirm Delete
+        </h3>
+      </div>
+      <div class="dialog-content-body">
+        <p>Are you sure you want to delete this patient? This action cannot be undone.</p>
+        <p id="dialog-delete-patient-name" style="font-weight: 600; margin-top: 0.5rem;"></p>
+      </div>
+      <div class="dialog-actions-row">
+        <button type="button" class="text-button" onclick="closeDialog('dialog-delete-patient')">
+          Cancel
+        </button>
+        <button type="button" class="elevated-button btn-red" onclick="executeDeletePatient()">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Confirm Delete Visit AlertDialog -->
+  <div class="dialog-backdrop" id="dialog-delete-visit" style="display: none;">
+    <div class="flutter-dialog alert-dialog-card">
+      <div class="dialog-title-row">
+        <h3 style="color: var(--md-error);">
+          <i class="fas fa-triangle-exclamation"></i> Confirm Delete Visit
+        </h3>
+      </div>
+      <div class="dialog-content-body">
+        <p id="dialog-delete-visit-text">Are you sure you want to delete this visit? This action cannot be undone.</p>
+      </div>
+      <div class="dialog-actions-row">
+        <button type="button" class="text-button" onclick="closeDialog('dialog-delete-visit')">
+          Cancel
+        </button>
+        <button type="button" class="elevated-button btn-red" onclick="executeDeleteVisit()">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Edit Visit Dialog (_showEditVisitDialog from doctor.dart) -->
+  <div class="dialog-backdrop" id="dialog-edit-visit" style="display: none;">
+    <div class="flutter-dialog edit-visit-dialog-card">
+      <div class="dialog-title-row">
+        <h3>Edit Visit</h3>
+        <button type="button" class="icon-button" onclick="closeDialog('dialog-edit-visit')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-content-body">
+        <input type="hidden" id="edit-visit-id">
+
+        <div class="form-field-group">
+          <label for="edit-visit-reason">Reason</label>
+          <textarea id="edit-visit-reason" class="flutter-textarea" rows="3" placeholder="Clinical reason or remarks"></textarea>
+        </div>
+
+        <div class="form-field-group">
+          <label for="edit-visit-prescription">Prescription</label>
+          <textarea id="edit-visit-prescription" class="flutter-textarea" rows="4" placeholder="Medicine - instructions (one per line)"></textarea>
+        </div>
+      </div>
+      <div class="dialog-actions-row">
+        <button type="button" class="text-button" onclick="closeDialog('dialog-edit-visit')">
+          Cancel
+        </button>
+        <button type="button" class="elevated-button btn-teal" onclick="executeSaveEditVisit()">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. X-Ray InteractiveViewer Dialog (InteractiveViewer from doctor.dart) -->
+  <div class="dialog-backdrop" id="dialog-xray-viewer" style="display: none;">
+    <div class="flutter-dialog xray-viewer-dialog-card">
+      <div class="dialog-title-row">
+        <h3><i class="fas fa-x-ray" style="color: var(--md-teal);"></i> Diagnostic X-Ray</h3>
+        <button type="button" class="icon-button" onclick="closeDialog('dialog-xray-viewer')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-content-body xray-image-container">
+        <div class="xray-interactive-viewport" id="xray-viewport">
+          <img id="xray-full-image" class="xray-interactive-img" src="" alt="Full Dental X-Ray">
+        </div>
+      </div>
+      <div class="dialog-actions-row xray-controls-row">
+        <div class="zoom-controls">
+          <button type="button" class="icon-button" onclick="zoomXray(0.25)" title="Zoom In">
+            <i class="fas fa-magnifying-glass-plus"></i>
+          </button>
+          <button type="button" class="icon-button" onclick="zoomXray(-0.25)" title="Zoom Out">
+            <i class="fas fa-magnifying-glass-minus"></i>
+          </button>
+          <button type="button" class="icon-button" onclick="rotateXray(90)" title="Rotate 90°">
+            <i class="fas fa-rotate-right"></i>
+          </button>
+          <button type="button" class="text-button" onclick="resetXray()" title="Reset">
+            Reset
+          </button>
+        </div>
+        <button type="button" class="elevated-button btn-secondary" onclick="closeDialog('dialog-xray-viewer')">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       FLUTTER SNACKBAR CONTAINER (Get.snackbar Bottom Notification)
+       ==================================================================== -->
+  <div class="snackbar-container" id="snackbar-container"></div>
+
+  <!-- Application Logic -->
+  <script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

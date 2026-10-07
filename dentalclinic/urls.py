@@ -5,6 +5,9 @@ from . import views
 from django.conf import settings
 from django.conf.urls.static import static
 urlpatterns = [
+    path('', views.app_view, name='clinic_app'),
+    path('app/', views.app_view, name='clinic_app_alt'),
+
     path('register/', views.register_patient),
     path('update/<int:patient_id>/', views.update_patient),
     path('update_visit/<int:visit_id>/', views.update_visit, name='update_visit'),
@@ -19,9 +22,11 @@ urlpatterns = [
     
     path('add_user/', views.add_user, name='add_user'),
     path('change_password/', views.change_password, name='change_password'),
-    path('delete/<int:patient_id>/', views.delete_patient, name='delete_patient')
+    path('delete/<int:patient_id>/', views.delete_patient, name='delete_patient'),
 
-    
+    path('recent_visits/', views.recent_visits, name='recent_visits'),
+    path('stats/', views.clinic_stats, name='clinic_stats'),
+    path('users/', views.list_users, name='list_users'),
 ]
 
 if settings.DEBUG:

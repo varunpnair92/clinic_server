@@ -19,10 +19,14 @@ class VisitHistorySerializer(serializers.ModelSerializer):
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
     xray_url = serializers.SerializerMethodField()
     visit_date = serializers.SerializerMethodField()
+    patient_id = serializers.IntegerField(source='patient.id', read_only=True)
+    patient_name = serializers.CharField(source='patient.name', read_only=True)
+    patient_op = serializers.IntegerField(source='patient.op_number', read_only=True)
+    patient_phone = serializers.CharField(source='patient.phone', read_only=True)
 
     class Meta:
         model = VisitHistory
-        fields = ['id', 'visit_date', 'reason', 'xray_url', 'prescriptions']
+        fields = ['id', 'visit_date', 'reason', 'xray_url', 'prescriptions', 'patient_id', 'patient_name', 'patient_op', 'patient_phone']
 
     def get_xray_url(self, obj):
         request = self.context.get('request')
