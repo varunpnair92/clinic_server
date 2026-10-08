@@ -357,7 +357,7 @@ def export_patients_csv(request):
     for p in patients.iterator(chunk_size=500):
         addr_str = p.address.address if hasattr(p, 'address') and p.address else ''
         dob_str = p.dob.strftime('%Y-%m-%d') if p.dob else ''
-        last_visit_str = p.last_visit.strftime('%Y-%m-%d %H:%M') if p.last_visit else 'Never'
+        last_visit_str = timezone.localtime(p.last_visit).strftime('%Y-%m-%d %I:%M %p') if p.last_visit else 'Never'
         writer.writerow([
             p.op_number,
             p.name,
@@ -401,7 +401,7 @@ def export_visits_csv(request):
             for p in v.prescriptions.all()
         ]
         rx_str = " | ".join(rx_list)
-        v_date = v.visit_date.strftime('%Y-%m-%d %H:%M') if v.visit_date else ''
+        v_date = timezone.localtime(v.visit_date).strftime('%Y-%m-%d %I:%M %p') if v.visit_date else ''
         has_xray = 'Yes' if v.xray_image else 'No'
 
         writer.writerow([
@@ -427,7 +427,7 @@ def download_db_backup(request):
     call_command('dumpdata', 'dentalclinic', indent=2, stdout=buffer)
 
     response = HttpResponse(buffer.getvalue(), content_type='application/json')
-    filename = f"clinic_db_backup_{datetime.now().strftime('%Y-%m-%d_%H%M')}.json"
+    filename = f"clinic_db_backup_{timezone.localtime(timezone.now()).strftime('%Y-%m-%d_%H%M')}.json"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
@@ -442,7 +442,7 @@ def clinic_metrics(request):
     total_prescriptions = Prescription.objects.count()
     total_users = AppUser.objects.count()
     latest_visit = VisitHistory.objects.order_by('-visit_date').first()
-    latest_visit_str = latest_visit.visit_date.strftime('%Y-%m-%d %H:%M') if latest_visit else 'None'
+    latest_visit_str = timezone.localtime(latest_visit.visit_date).strftime('%Y-%m-%d %I:%M %p') if latest_visit else 'None'
 
     return Response({
         'total_patients': total_patients,

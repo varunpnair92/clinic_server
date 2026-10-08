@@ -38,8 +38,11 @@ class VisitHistorySerializer(serializers.ModelSerializer):
         return None
     
     def get_visit_date(self, obj):
-        # Format: YYYY-MM-DD HH:MM (no seconds or microseconds)
-        return obj.visit_date.strftime('%Y-%m-%d %H:%M') if obj.visit_date else None
+        # Format: YYYY-MM-DD HH:MM (Local IST timezone)
+        if not obj.visit_date:
+            return None
+        from django.utils import timezone
+        return timezone.localtime(obj.visit_date).strftime('%Y-%m-%d %H:%M')
 
 
 
@@ -213,9 +216,15 @@ class PatientQueueSerializer(serializers.ModelSerializer):
         return ''
 
     def get_admitted_time(self, obj):
-        return obj.admitted_at.strftime('%I:%M %p') if obj.admitted_at else ''
+        if not obj.admitted_at:
+            return ''
+        from django.utils import timezone
+        return timezone.localtime(obj.admitted_at).strftime('%I:%M %p')
 
     def get_completed_time(self, obj):
-        return obj.completed_at.strftime('%I:%M %p') if obj.completed_at else ''
+        if not obj.completed_at:
+            return ''
+        from django.utils import timezone
+        return timezone.localtime(obj.completed_at).strftime('%I:%M %p')
 
 
