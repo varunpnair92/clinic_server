@@ -1448,3 +1448,336 @@ body {
     padding: 1.25rem;
   }
 }
+
+/* ==========================================================================
+   PATIENT QUEUE & ADMISSION TOKEN SYSTEM (Doctor Notification & Token Badges)
+   ========================================================================== */
+.queue-bell-btn {
+  position: relative;
+}
+
+.queue-badge-pill {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  animation: queuePulse 2s infinite ease-in-out;
+}
+
+@keyframes queuePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
+}
+
+.drawer-badge-count {
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* Doctor Live Queue Strip Bar */
+.doctor-queue-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+
+.queue-strip-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: rgba(0, 121, 107, 0.12);
+  color: var(--md-primary);
+  border-radius: var(--radius-xs);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.queue-chips-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+  padding: 2px 0;
+  scrollbar-width: thin;
+}
+
+.queue-chip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.queue-chip-item:hover {
+  background-color: var(--md-primary);
+  color: white;
+  border-color: var(--md-primary);
+  transform: translateY(-1px);
+}
+
+.queue-chip-token {
+  background-color: var(--md-primary);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.queue-chip-item:hover .queue-chip-token {
+  background-color: white;
+  color: var(--md-primary);
+}
+
+.btn-strip-viewall {
+  background: none;
+  border: none;
+  color: var(--md-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-strip-viewall:hover {
+  text-decoration: underline;
+}
+
+/* Queue Modal & Tabs */
+.queue-dialog-card {
+  width: 90%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-tab-bar {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  margin-top: 0.5rem;
+}
+
+.queue-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.queue-tab-btn:hover {
+  color: var(--md-primary);
+  background-color: rgba(0, 121, 107, 0.04);
+}
+
+.queue-tab-btn.active {
+  color: var(--md-primary);
+  border-bottom-color: var(--md-primary);
+  background-color: rgba(0, 121, 107, 0.08);
+}
+
+.tab-badge-pill {
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.tab-badge-neutral {
+  background-color: #10b981;
+}
+
+.queue-list-viewport {
+  overflow-y: auto;
+  max-height: 52vh;
+  padding: 0.75rem 0.25rem;
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-card-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.queue-card-entry:hover {
+  border-color: var(--md-teal);
+  box-shadow: var(--shadow-card);
+}
+
+.token-circle-badge {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00796b, #004d40);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 2px 6px rgba(0, 121, 107, 0.3);
+}
+
+.token-circle-badge.completed {
+  background: linear-gradient(135deg, #10b981, #047857);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.token-circle-sub {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  line-height: 1;
+}
+
+.queue-entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-entry-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-entry-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.queue-entry-time {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.queue-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-call-patient {
+  background-color: var(--md-primary);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.btn-call-patient:hover {
+  background-color: var(--md-teal-dark);
+}
+
+.btn-remove-queue {
+  color: var(--md-error);
+  background: none;
+  border: 1px solid rgba(211, 47, 47, 0.25);
+  padding: 6px 9px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-remove-queue:hover {
+  background-color: rgba(211, 47, 47, 0.08);
+}
+
+.btn-admit-chip {
+  background-color: rgba(0, 121, 107, 0.1);
+  color: var(--md-primary);
+  border: 1px solid rgba(0, 121, 107, 0.3);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-admit-chip:hover {
+  background-color: var(--md-primary);
+  color: white;
+}
+

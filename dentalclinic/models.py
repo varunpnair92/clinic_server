@@ -71,3 +71,25 @@ class AppUser(models.Model):
 
     def __str__(self):
         return f"{self.username} ({self.role})"
+
+
+class PatientQueue(models.Model):
+    STATUS_CHOICES = (
+        ('waiting', 'Waiting'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='queue_entries')
+    token_number = models.PositiveIntegerField()
+    queue_date = models.DateField(auto_now_add=True)
+    admitted_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='waiting')
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['token_number']
+
+    def __str__(self):
+        return f"Token #{self.token_number} - {self.patient.name} ({self.status})"
+

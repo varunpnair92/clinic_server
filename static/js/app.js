@@ -27,6 +27,11 @@ const State = {
   // X-Ray Lightbox State
   xrayZoom: 1,
   xrayRotate: 0,
+
+  // Live Patient Queue State
+  todayQueue: { waiting: [], completed: [], pending_count: 0, completed_count: 0, total_tokens: 0 },
+  activeQueueTab: 'waiting',
+  queuePollTimer: null,
 };
 
 // --- Backend API Service Layer ---
@@ -134,6 +139,37 @@ const API = {
   async getRangeSummary(startDate, endDate) {
     return this.request(`/range/?start=${startDate}&end=${endDate}`);
   },
+
+  async getClinicMetrics() {
+    return this.request('/metrics/');
+  },
+
+  async getTodayQueue() {
+    return this.request('/queue/today/');
+  },
+
+  async admitToQueue(patientId) {
+    return this.request('/queue/admit/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId }),
+    });
+  },
+
+  async completeQueueEntry(entryId, patientId) {
+    const endpoint = entryId ? `/queue/${entryId}/complete/` : '/queue/complete/';
+    return this.request(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId }),
+    });
+  },
+
+  async removeQueueEntry(entryId) {
+    return this.request(`/queue/${entryId}/remove/`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // --- Flutter-Style SnackBar Notification (Get.snackbar) ---
@@ -178,6 +214,10 @@ const SnackBar = {
 
   warning(title, message) {
     this.show(title || 'Warning', message, 'warning');
+  },
+
+  info(title, message) {
+    this.show(title || 'Notice', message, 'info');
   },
 };
 
@@ -259,7 +299,10 @@ function navigateTo(route) {
   window.location.hash = route;
 
   // Hide all panes
-  document.querySelectorAll('.route-pane').forEach((p) => (p.style.display = 'none'));
+  document.querySelectorAll('.route-pane').forEach((p) => {
+    p.style.display = 'none';
+    p.classList.remove('active');
+  });
 
   // Update Appbar Title & Subtitle based on Route
   const titleMap = {
@@ -275,12 +318,15 @@ function navigateTo(route) {
   const titleEl = document.getElementById('appbar-title');
   if (titleEl) titleEl.textContent = titleMap[route] || 'Clinic Management';
 
-  // Toggle Appbar visibility (Hidden on Login screen if desired, or styled)
+  // Toggle Appbar visibility (Hidden on Login screen, visible otherwise)
   const appbar = document.getElementById('flutter-appbar');
   if (route === '/') {
     if (appbar) appbar.style.display = 'none';
+    stopQueuePolling();
   } else {
     if (appbar) appbar.style.display = 'flex';
+    startQueuePolling();
+    loadTodayQueue(true);
   }
 
   // Show active pane
@@ -294,9 +340,9 @@ function navigateTo(route) {
 
   const pane = document.getElementById(activePaneId);
   if (pane) {
+    pane.classList.add('active');
     pane.style.display = pane.classList.contains('centered-layout') ? 'flex' : 'block';
-    if (pane.id === 'pane-doctor') pane.style.display = 'flex';
-    if (pane.id === 'pane-search') pane.style.display = 'flex';
+    if (pane.id === 'pane-doctor' || pane.id === 'pane-search') pane.style.display = 'flex';
   }
 
   // Update Active Navigation Tabs in Appbar & Drawer
@@ -316,6 +362,7 @@ function navigateTo(route) {
     if (searchInput) searchInput.focus();
   } else if (route === '/admin') {
     loadAdminUsersList();
+    loadAdminMetrics();
   }
 }
 
@@ -417,11 +464,45 @@ async function handleLoginSubmit(e) {
 }
 
 function handleLogout() {
+  closeDrawer();
+  closeQueueModal();
+  stopQueuePolling();
+
   State.user = null;
+  State.selectedPatient = null;
+  State.selectedEditPatient = null;
+  State.todayQueue = { waiting: [], completed: [], pending_count: 0, completed_count: 0, total_tokens: 0 };
   localStorage.removeItem('clinic_user');
+  sessionStorage.clear();
+
+  // Reset login fields
+  const userInp = document.getElementById('login-username');
+  const pwdInput = document.getElementById('login-password');
+  if (userInp) userInp.value = '';
+  if (pwdInput) pwdInput.value = '';
+
+  // Direct DOM view switch: Hide all panes, show login pane
+  document.querySelectorAll('.route-pane').forEach((p) => {
+    p.style.display = 'none';
+    p.classList.remove('active');
+  });
+
+  const loginPane = document.getElementById('pane-login');
+  if (loginPane) {
+    loginPane.style.display = 'flex';
+    loginPane.classList.add('active');
+  }
+
+  // Hide Appbar on login screen
+  const appbar = document.getElementById('flutter-appbar');
+  if (appbar) appbar.style.display = 'none';
+
   updateUserDataUI();
+
+  State.currentRoute = '/';
+  window.location.hash = '#/';
+
   SnackBar.info('Logged Out', 'You have been signed out.');
-  navigateTo('/');
 }
 
 // ==========================================================================
@@ -582,6 +663,9 @@ function renderDoctorVisitHistory() {
 
             <div class="visit-actions-right">
               ${xrayHtml}
+              <button type="button" class="icon-button" style="color: var(--md-primary);" onclick="printVisitPrescription(${v.id})" title="Print Prescription Slip">
+                <i class="fas fa-print"></i>
+              </button>
               <button type="button" class="icon-button" style="color: var(--md-blue);" onclick="openEditVisitModal(${v.id})" title="Edit Visit">
                 <i class="fas fa-pencil"></i>
               </button>
@@ -684,6 +768,8 @@ async function handleAddVisitSubmit() {
       renderDoctorPatientDetails();
       renderDoctorVisitHistory();
     }
+    // Automatically refresh today's queue so patient moves to Completed Today!
+    loadTodayQueue(true);
   } else {
     SnackBar.error('Failed', res.data?.error || 'Failed to record visit.');
   }
@@ -912,10 +998,19 @@ async function handleRegisterSubmit(e) {
 
   if (res.status === 201) {
     const opNumber = res.data?.op_number || 'N/A';
+    const patientId = res.data?.id;
     SnackBar.success('Success', 'Patient registered successfully.');
 
+    // Auto-admit to doctor queue if checkbox checked
+    const autoAdmitCheck = document.getElementById('reg-auto-admit');
+    if (autoAdmitCheck && autoAdmitCheck.checked && patientId) {
+      API.admitToQueue(patientId).then(() => {
+        loadTodayQueue(true);
+      });
+    }
+
     // Show Flutter-style Dialog with OP Number
-    showOpNumberDialog('OP Number', `New OP Number: #${opNumber}`, res.data?.id);
+    showOpNumberDialog('OP Number', `New OP Number: #${opNumber}`, patientId);
     document.getElementById('form-register-patient').reset();
     document.getElementById('reg-dob-display-label').textContent = 'Select Date';
   } else if (res.status === 400 && res.data?.existing_op_number) {
@@ -975,8 +1070,13 @@ function renderSearchPatientList(patients) {
       const isSelected = State.selectedEditPatient && State.selectedEditPatient.id === p.id;
       return `
         <div class="patient-list-item ${isSelected ? 'selected' : ''}" onclick="selectPatientForEditing(${p.id})">
-          <div class="patient-list-name">${escapeHtml(p.name)}</div>
-          <div class="patient-list-subtitle">OP: #${p.op_number || 'N/A'} &bull; ${escapeHtml(p.phone || 'N/A')}</div>
+          <div style="flex: 1; min-width: 0;">
+            <div class="patient-list-name">${escapeHtml(p.name)}</div>
+            <div class="patient-list-subtitle">OP: #${p.op_number || 'N/A'} &bull; ${escapeHtml(p.phone || 'N/A')}</div>
+          </div>
+          <button type="button" class="btn-admit-chip" onclick="event.stopPropagation(); admitPatientPrompt(${p.id}, '${escapeHtml(p.name)}')" title="Admit to Doctor Queue">
+            <i class="fas fa-ticket-simple"></i> Admit
+          </button>
         </div>
       `;
     })
@@ -1010,7 +1110,12 @@ function renderSearchPatientEditor() {
   if (activeEditor) activeEditor.style.display = 'block';
 
   document.getElementById('edit-patient-id').value = patient.id;
-  document.getElementById('edit-patient-op-label').textContent = `OP Number: #${patient.op_number || 'N/A'}`;
+  document.getElementById('edit-patient-op-label').innerHTML = `
+    OP Number: #${patient.op_number || 'N/A'}
+    <button type="button" class="btn-admit-chip" style="margin-left: 10px;" onclick="admitPatientPrompt(${patient.id}, '${escapeHtml(patient.name)}')">
+      <i class="fas fa-ticket-simple"></i> Admit to Queue
+    </button>
+  `;
   document.getElementById('edit-name').value = patient.name || '';
   document.getElementById('edit-age').value = patient.age !== undefined ? patient.age : '';
   document.getElementById('edit-phone').value = patient.phone || '';
@@ -1171,8 +1276,124 @@ function renderReportTableResults(visits) {
 }
 
 // ==========================================================================
-// 6. ADMIN & USER MANAGEMENT (usermanagment.dart)
+// 6. ADMIN & DATA SAFETY (usermanagment.dart + Backup/Export Feature)
 // ==========================================================================
+async function loadAdminMetrics() {
+  const res = await API.getClinicMetrics();
+  if (res.ok && res.data) {
+    const data = res.data;
+    const patEl = document.getElementById('metric-total-patients');
+    const visEl = document.getElementById('metric-total-visits');
+    const rxEl = document.getElementById('metric-total-rx');
+    const userEl = document.getElementById('metric-total-users');
+
+    if (patEl) patEl.textContent = Number(data.total_patients).toLocaleString();
+    if (visEl) visEl.textContent = Number(data.total_visits).toLocaleString();
+    if (rxEl) rxEl.textContent = Number(data.total_prescriptions).toLocaleString();
+    if (userEl) userEl.textContent = Number(data.total_users).toLocaleString();
+  }
+}
+
+function printVisitPrescription(visitId) {
+  if (!State.selectedPatient || !State.selectedPatient.visits) return;
+  const visit = State.selectedPatient.visits.find((v) => v.id === visitId);
+  if (!visit) return;
+
+  const patient = State.selectedPatient;
+  const prescriptions = visit.prescriptions || [];
+  const rxRows = prescriptions.length > 0
+    ? prescriptions
+        .map(
+          (p, i) => `
+      <tr>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; width: 30px; font-weight: bold; color: #64748b;">${i + 1}.</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-size: 15px; font-weight: 700; color: #004d40;">${escapeHtml(p.medicine_name)}</div>
+          ${p.instructions ? `<div style="font-size: 13px; color: #475569; margin-top: 3px;">Instructions: <strong>${escapeHtml(p.instructions)}</strong></div>` : ''}
+        </td>
+      </tr>`
+        )
+        .join('')
+    : '<tr><td colspan="2" style="padding: 16px; text-align: center; color: #94a3b8;">No medications prescribed for this visit.</td></tr>';
+
+  const printWindow = window.open('', '_blank', 'width=800,height=900');
+  if (!printWindow) {
+    SnackBar.warning('Popup Blocked', 'Please allow popups to open the prescription print view.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Prescription - ${escapeHtml(patient.name)} (OP #${patient.op_number})</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 36px; color: #0f172a; margin: 0; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #00796b; padding-bottom: 16px; margin-bottom: 22px; }
+        .clinic-name { font-size: 26px; font-weight: 800; color: #00796b; margin: 0; }
+        .clinic-sub { font-size: 13px; color: #64748b; margin: 4px 0 0; }
+        .badge { background: #e0f2f1; color: #004d40; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: 700; }
+        .patient-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 14px; }
+        .rx-title { font-size: 24px; font-weight: 800; color: #00796b; margin: 24px 0 10px; font-style: italic; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .footer { margin-top: 70px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 20px; border-top: 1px dashed #cbd5e1; font-size: 12px; color: #64748b; }
+        .sig-line { border-top: 1.5px solid #0f172a; width: 200px; margin-top: 60px; text-align: center; font-size: 13px; font-weight: 600; padding-top: 4px; }
+        .print-btn-bar { text-align: right; margin-bottom: 15px; }
+        .print-btn { background: #00796b; color: white; border: none; padding: 9px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 14px; }
+        @media print { .print-btn-bar { display: none; } body { padding: 12mm; } }
+      </style>
+    </head>
+    <body>
+      <div class="print-btn-bar">
+        <button class="print-btn" onclick="window.print()">
+          🖨️ Print Prescription Slip
+        </button>
+      </div>
+
+      <div class="header">
+        <div>
+          <h1 class="clinic-name">DentalCare Clinic</h1>
+          <p class="clinic-sub">Advanced Dental Care, Oral Surgery & Patient Management</p>
+        </div>
+        <div style="text-align: right;">
+          <span class="badge">CONSULTATION PRESCRIPTION</span>
+          <div style="font-size: 13px; color: #64748b; margin-top: 6px;">Date: <strong>${escapeHtml(visit.visit_date || '')}</strong></div>
+        </div>
+      </div>
+
+      <div class="patient-box">
+        <div><strong>Patient:</strong> ${escapeHtml(patient.name)}</div>
+        <div><strong>OP Number:</strong> #${escapeHtml(patient.op_number || '')}</div>
+        <div><strong>Age / Gender:</strong> ${escapeHtml(patient.age !== undefined ? patient.age : '')} yrs / ${escapeHtml(patient.gender || '')}</div>
+        <div><strong>Phone:</strong> ${escapeHtml(patient.phone || '')}</div>
+        <div style="grid-column: span 2;"><strong>Address:</strong> ${escapeHtml(patient.address?.address || 'N/A')}</div>
+      </div>
+
+      ${visit.reason ? `
+        <div style="margin-bottom: 22px; background: #fffde7; padding: 12px 16px; border-radius: 6px; border-left: 4px solid #fbc02d; font-size: 14px;">
+          <strong>Clinical Remarks / Diagnosis:</strong>
+          <div style="margin-top: 4px; color: #334155; line-height: 1.5;">${escapeHtml(visit.reason)}</div>
+        </div>
+      ` : ''}
+
+      <div class="rx-title">&#8478; Prescriptions</div>
+      <table>
+        ${rxRows}
+      </table>
+
+      <div class="footer">
+        <div>DentalCare Clinic Portal &bull; Electronically Generated</div>
+        <div>
+          <div class="sig-line">Doctor Signature & Stamp</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 async function loadAdminUsersList() {
   const container = document.getElementById('admin-user-roster-list');
   if (!container) return;
@@ -1242,6 +1463,273 @@ async function handleAdminChangePasswordSubmit(e) {
 }
 
 // ==========================================================================
+// 7. PATIENT QUEUE & ADMISSION TOKEN SYSTEM (Doctor Notification & Tokens)
+// ==========================================================================
+async function loadTodayQueue(silent = false) {
+  if (!State.user) return;
+
+  const res = await API.getTodayQueue();
+  if (!res.ok || !res.data) return;
+
+  State.todayQueue = res.data;
+  renderQueueBadges();
+  renderDoctorQueueStrip();
+
+  // If queue modal is open, re-render its list
+  const modal = document.getElementById('dialog-patient-queue');
+  if (modal && modal.style.display !== 'none') {
+    renderQueueModalContent();
+  }
+}
+
+function renderQueueBadges() {
+  const pendingCount = State.todayQueue?.pending_count || 0;
+  const completedCount = State.todayQueue?.completed_count || 0;
+  const totalTokens = State.todayQueue?.total_tokens || 0;
+
+  // Appbar Notification Bell Badge
+  const bellBadge = document.getElementById('queue-pending-count');
+  if (bellBadge) {
+    bellBadge.textContent = pendingCount;
+    bellBadge.style.display = pendingCount > 0 ? 'flex' : 'none';
+  }
+
+  // Drawer Badge
+  const drawerBadge = document.getElementById('drawer-queue-count');
+  if (drawerBadge) {
+    drawerBadge.textContent = pendingCount;
+    drawerBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+  }
+
+  // Reception Panel Badge
+  const receptionBadge = document.getElementById('reception-queue-count');
+  if (receptionBadge) {
+    receptionBadge.textContent = pendingCount;
+  }
+
+  // Doctor Desk Strip Counter
+  const stripCount = document.getElementById('doc-strip-count');
+  if (stripCount) {
+    stripCount.textContent = pendingCount;
+  }
+
+  // Modal tab badges & subtitle
+  const tabWaitingBadge = document.getElementById('tab-waiting-count-badge');
+  if (tabWaitingBadge) tabWaitingBadge.textContent = pendingCount;
+
+  const tabCompletedBadge = document.getElementById('tab-completed-count-badge');
+  if (tabCompletedBadge) tabCompletedBadge.textContent = completedCount;
+
+  const totalTokensLabel = document.getElementById('queue-total-tokens-label');
+  if (totalTokensLabel) totalTokensLabel.textContent = totalTokens;
+}
+
+function renderDoctorQueueStrip() {
+  const strip = document.getElementById('doc-queue-strip');
+  const container = document.getElementById('doc-queue-chips');
+  if (!strip || !container) return;
+
+  const waiting = State.todayQueue?.waiting || [];
+  if (waiting.length === 0) {
+    strip.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  strip.style.display = 'flex';
+  container.innerHTML = waiting
+    .map((item) => `
+      <div class="queue-chip-item" onclick="callPatientFromQueue(${item.patient_id})" title="Click to open file for ${escapeHtml(item.patient_name)}">
+        <span class="queue-chip-token">#${item.token_number}</span>
+        <strong>${escapeHtml(item.patient_name)}</strong>
+        <span style="opacity: 0.75; font-size: 0.75rem;">(OP #${item.patient_op})</span>
+      </div>
+    `)
+    .join('');
+}
+
+function openQueueModal() {
+  closeDrawer();
+  const modal = document.getElementById('dialog-patient-queue');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  renderQueueModalContent();
+  loadTodayQueue(true);
+}
+
+function closeQueueModal() {
+  const modal = document.getElementById('dialog-patient-queue');
+  if (modal) modal.style.display = 'none';
+}
+
+function switchQueueTab(tabName) {
+  State.activeQueueTab = tabName;
+
+  const waitingBtn = document.getElementById('tab-queue-waiting-btn');
+  const completedBtn = document.getElementById('tab-queue-completed-btn');
+  const waitingPane = document.getElementById('queue-pane-waiting');
+  const completedPane = document.getElementById('queue-pane-completed');
+
+  if (tabName === 'waiting') {
+    if (waitingBtn) waitingBtn.classList.add('active');
+    if (completedBtn) completedBtn.classList.remove('active');
+    if (waitingPane) waitingPane.style.display = 'block';
+    if (completedPane) completedPane.style.display = 'none';
+  } else {
+    if (waitingBtn) waitingBtn.classList.remove('active');
+    if (completedBtn) completedBtn.classList.add('active');
+    if (waitingPane) waitingPane.style.display = 'none';
+    if (completedPane) completedPane.style.display = 'block';
+  }
+
+  renderQueueModalContent();
+}
+
+function renderQueueModalContent() {
+  const waitingListEl = document.getElementById('queue-waiting-list');
+  const completedListEl = document.getElementById('queue-completed-list');
+
+  const waiting = State.todayQueue?.waiting || [];
+  const completed = State.todayQueue?.completed || [];
+
+  // 1. Render Waiting / Pending Queue
+  if (waitingListEl) {
+    if (waiting.length === 0) {
+      waitingListEl.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-subtle);">
+          <i class="fas fa-check-circle" style="font-size: 2.5rem; opacity: 0.4; margin-bottom: 0.75rem; display: block; color: var(--md-teal);"></i>
+          <h4 style="margin: 0; color: var(--text-secondary);">No Patients in Waiting Queue</h4>
+          <p style="font-size: 0.82rem; margin: 4px 0 0;">Receptionist can admit patients using "Search Patient" or "Register Patient".</p>
+        </div>
+      `;
+    } else {
+      waitingListEl.innerHTML = waiting
+        .map((item) => `
+          <div class="queue-card-entry" onclick="callPatientFromQueue(${item.patient_id})" style="cursor: pointer;" title="Click to open ${escapeHtml(item.patient_name)} in Doctor Desk">
+            <div class="token-circle-badge">
+              <span class="token-circle-sub">TOKEN</span>
+              <span>#${item.token_number}</span>
+            </div>
+            <div class="queue-entry-info">
+              <div class="queue-entry-name">
+                ${escapeHtml(item.patient_name)}
+                <span class="badge" style="background: rgba(0,121,107,0.1); color: var(--md-primary); font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">OP #${item.patient_op}</span>
+              </div>
+              <div class="queue-entry-meta">
+                ${item.patient_age !== undefined ? `${item.patient_age} yrs` : ''} &bull; ${escapeHtml(item.patient_gender || '')} &bull; ${escapeHtml(item.patient_phone || '')}
+              </div>
+              <div class="queue-entry-time">
+                <i class="fas fa-clock" style="font-size: 0.7rem;"></i> Admitted: <strong>${escapeHtml(item.admitted_time || 'Today')}</strong>
+              </div>
+            </div>
+            <div class="queue-entry-actions">
+              <button type="button" class="btn-call-patient" onclick="event.stopPropagation(); callPatientFromQueue(${item.patient_id})" title="Load Patient into Doctor Desk">
+                <i class="fas fa-user-md"></i> Consult
+              </button>
+              <button type="button" class="btn-remove-queue" onclick="event.stopPropagation(); removePatientFromQueuePrompt(${item.id}, '${escapeHtml(item.patient_name)}')" title="Remove from Queue">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+  }
+
+  // 2. Render Completed Today
+  if (completedListEl) {
+    if (completed.length === 0) {
+      completedListEl.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-subtle);">
+          <i class="fas fa-user-clock" style="font-size: 2.5rem; opacity: 0.4; margin-bottom: 0.75rem; display: block;"></i>
+          <h4 style="margin: 0; color: var(--text-secondary);">No Consultations Completed Yet Today</h4>
+          <p style="font-size: 0.82rem; margin: 4px 0 0;">When Doctor adds a visit for a patient, they move here automatically.</p>
+        </div>
+      `;
+    } else {
+      completedListEl.innerHTML = completed
+        .map((item) => `
+          <div class="queue-card-entry" style="opacity: 0.9;">
+            <div class="token-circle-badge completed">
+              <i class="fas fa-check" style="font-size: 0.85rem; margin-bottom: 1px;"></i>
+              <span style="font-size: 0.9rem;">#${item.token_number}</span>
+            </div>
+            <div class="queue-entry-info">
+              <div class="queue-entry-name">
+                ${escapeHtml(item.patient_name)}
+                <span class="badge" style="background: rgba(16,185,129,0.12); color: #047857; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">OP #${item.patient_op}</span>
+              </div>
+              <div class="queue-entry-meta">
+                ${item.patient_age !== undefined ? `${item.patient_age} yrs` : ''} &bull; ${escapeHtml(item.patient_phone || '')}
+              </div>
+              <div class="queue-entry-time" style="color: #047857;">
+                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Completed: <strong>${escapeHtml(item.completed_time || item.admitted_time || 'Today')}</strong>
+              </div>
+            </div>
+            <div class="queue-entry-actions">
+              <button type="button" class="elevated-button btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="callPatientFromQueue(${item.patient_id})" title="Review Patient File">
+                <i class="fas fa-folder-open"></i> View File
+              </button>
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+  }
+}
+
+async function callPatientFromQueue(patientId) {
+  closeQueueModal();
+  if (State.currentRoute !== '/doctor') {
+    navigateTo('/doctor');
+  }
+  await selectPatientInDoctorView(patientId);
+  SnackBar.info('Patient Loaded', `Loaded patient into Doctor Desk for consultation.`);
+}
+
+async function admitPatientPrompt(patientId, patientName) {
+  const res = await API.admitToQueue(patientId);
+  if (res.ok && res.data) {
+    if (res.data.already_waiting) {
+      SnackBar.warning('Already in Queue', res.data.message);
+    } else {
+      SnackBar.success('Admitted to Queue', res.data.message);
+    }
+    loadTodayQueue(true);
+  } else {
+    SnackBar.error('Failed', res.data?.error || 'Failed to admit patient');
+  }
+}
+
+async function removePatientFromQueuePrompt(entryId, patientName) {
+  if (!confirm(`Are you sure you want to remove ${patientName} from today's queue?`)) return;
+
+  const res = await API.removeQueueEntry(entryId);
+  if (res.ok) {
+    SnackBar.info('Removed', res.data?.message || 'Patient removed from queue.');
+    loadTodayQueue(true);
+  } else {
+    SnackBar.error('Failed', res.data?.error || 'Failed to remove patient from queue.');
+  }
+}
+
+function startQueuePolling() {
+  if (State.queuePollTimer) clearInterval(State.queuePollTimer);
+  State.queuePollTimer = setInterval(() => {
+    if (State.user) {
+      loadTodayQueue(true);
+    }
+  }, 12000);
+}
+
+function stopQueuePolling() {
+  if (State.queuePollTimer) {
+    clearInterval(State.queuePollTimer);
+    State.queuePollTimer = null;
+  }
+}
+
+// ==========================================================================
 // MODAL DIALOG CONTROLS
 // ==========================================================================
 function openDialog(dialogId) {
@@ -1280,21 +1768,28 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Determine Initial Route
   const hash = window.location.hash.replace('#', '');
-  if (hash && ['/doctor', '/reception', '/register', '/search', '/reports', '/admin'].includes(hash)) {
-    navigateTo(hash);
+  if (!State.user) {
+    navigateTo('/');
   } else {
-    if (State.user) {
+    startQueuePolling();
+    loadTodayQueue(true);
+
+    if (hash && ['/doctor', '/reception', '/register', '/search', '/reports', '/admin'].includes(hash)) {
+      navigateTo(hash);
+    } else {
       if (State.user.role === 'doctor') navigateTo('/doctor');
       else if (State.user.role === 'receptionist') navigateTo('/reception');
       else navigateTo('/admin');
-    } else {
-      navigateTo('/');
     }
   }
 });
 
 window.addEventListener('hashchange', () => {
   const hash = window.location.hash.replace('#', '');
+  if (!State.user) {
+    navigateTo('/');
+    return;
+  }
   if (hash && hash !== State.currentRoute) {
     navigateTo(hash);
   }

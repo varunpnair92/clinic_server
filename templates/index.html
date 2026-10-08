@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
   <!-- Flutter Material Theme Stylesheet -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.0">
 </head>
 <body>
 
@@ -60,6 +60,12 @@
       </nav>
 
       <div class="appbar-right">
+        <!-- Patient Queue Live Notification Badge -->
+        <button type="button" class="icon-button appbar-action queue-bell-btn" id="btn-queue-badge" onclick="openQueueModal()" title="Today's Patient Queue (Tokens)">
+          <i class="fas fa-bell"></i>
+          <span class="queue-badge-pill" id="queue-pending-count" style="display: none;">0</span>
+        </button>
+
         <!-- Current User Role Badge -->
         <div class="appbar-user-pill" id="appbar-user-pill" title="Active Account">
           <i class="fas fa-circle-user"></i>
@@ -73,7 +79,7 @@
         </button>
 
         <!-- Logout Action -->
-        <button type="button" class="icon-button appbar-action" onclick="handleLogout()" title="Logout">
+        <button type="button" class="icon-button appbar-action" id="btn-appbar-logout" onclick="handleLogout()" title="Logout">
           <i class="fas fa-arrow-right-from-bracket"></i>
         </button>
       </div>
@@ -125,6 +131,12 @@
         <div class="drawer-item" data-route="/admin" onclick="navigateTo('/admin')">
           <i class="fas fa-user-shield drawer-item-icon"></i>
           <span>Admin & User Management</span>
+        </div>
+
+        <div class="drawer-item" onclick="openQueueModal()">
+          <i class="fas fa-ticket-simple drawer-item-icon" style="color: var(--md-teal);"></i>
+          <span>Patient Queue (Tokens)</span>
+          <span class="drawer-badge-count" id="drawer-queue-count" style="display: none;">0</span>
         </div>
 
         <div class="drawer-divider"></div>
@@ -197,6 +209,20 @@
            Exact 3-Column Layout: Search (flex: 1) | Details & Add Visit (flex: 1) | History (flex: 3)
            ================================================================ -->
       <section class="route-pane active" id="pane-doctor">
+        <!-- Live Patient Queue Bar (Tokens Banner) -->
+        <div class="doctor-queue-strip" id="doc-queue-strip" style="display: none;">
+          <div class="queue-strip-badge" onclick="openQueueModal()" title="View Patient Queue">
+            <i class="fas fa-user-clock"></i>
+            <span>Waiting Queue: <strong id="doc-strip-count">0</strong></span>
+          </div>
+          <div class="queue-chips-container" id="doc-queue-chips">
+            <!-- Dynamic Token Chips -->
+          </div>
+          <button type="button" class="btn-strip-viewall" onclick="openQueueModal()">
+            <i class="fas fa-list-ol"></i> View Queue
+          </button>
+        </div>
+
         <div class="doctor-three-columns">
 
           <!-- COLUMN 1: Search Panel (flex: 1) -->
@@ -348,6 +374,10 @@
             <button type="button" class="elevated-button btn-teal btn-large" onclick="navigateTo('/search')">
               <i class="fas fa-search"></i> Search Patient
             </button>
+
+            <button type="button" class="elevated-button btn-teal-outline btn-large" onclick="openQueueModal()">
+              <i class="fas fa-ticket-simple"></i> Patient Queue & Tokens (<span id="reception-queue-count">0</span>)
+            </button>
           </div>
         </div>
       </section>
@@ -404,6 +434,14 @@
             <div class="form-field-group">
               <label for="reg-address">Address</label>
               <input type="text" id="reg-address" class="flutter-input" placeholder="Residential Address / City">
+            </div>
+
+            <!-- Auto-admit to Queue Checkbox -->
+            <div class="form-field-group" style="margin-top: -0.25rem; margin-bottom: 0.5rem;">
+              <label class="checkbox-container" style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; color: var(--md-primary); font-size: 0.92rem;">
+                <input type="checkbox" id="reg-auto-admit" checked style="width: 17px; height: 17px; accent-color: var(--md-primary); cursor: pointer;">
+                <span>Admit & Issue Token to Doctor Queue immediately</span>
+              </label>
             </div>
 
             <div class="form-submit-row">
@@ -597,8 +635,72 @@
       <section class="route-pane centered-layout" id="pane-admin" style="display: none;">
         <div class="flutter-card form-container-600">
           <div class="form-header-bar">
-            <h2 class="form-title">User Management</h2>
+            <h2 class="form-title">User Management & Data Safety</h2>
           </div>
+
+          <!-- Section 0: Clinic Data Safety & Backup (Feature 4) -->
+          <div class="admin-section" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+              <h3 class="sub-heading" style="font-size: 18px; margin: 0;">
+                <i class="fas fa-shield-halved" style="color: var(--md-primary);"></i> Data Safety & Backup
+              </h3>
+              <span class="db-status-pill" style="font-size: 0.75rem; background: var(--md-teal-50); color: var(--md-primary); padding: 3px 10px; border-radius: 9999px; font-weight: 600;">
+                <i class="fas fa-database"></i> PostgreSQL Connected
+              </span>
+            </div>
+
+            <!-- Metrics Chips Grid -->
+            <div class="metrics-dashboard-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; margin-bottom: 1.25rem;">
+              <div class="metric-card" style="background: var(--bg-surface-variant); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 0.65rem 0.85rem;">
+                <div style="font-size: 0.75rem; color: var(--text-subtle); text-transform: uppercase; font-weight: 600;">Registered Patients</div>
+                <div id="metric-total-patients" style="font-size: 1.4rem; font-weight: 700; color: var(--md-primary);">-</div>
+              </div>
+              <div class="metric-card" style="background: var(--bg-surface-variant); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 0.65rem 0.85rem;">
+                <div style="font-size: 0.75rem; color: var(--text-subtle); text-transform: uppercase; font-weight: 600;">Consultation Visits</div>
+                <div id="metric-total-visits" style="font-size: 1.4rem; font-weight: 700; color: var(--md-green);">-</div>
+              </div>
+              <div class="metric-card" style="background: var(--bg-surface-variant); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 0.65rem 0.85rem;">
+                <div style="font-size: 0.75rem; color: var(--text-subtle); text-transform: uppercase; font-weight: 600;">Prescriptions Issued</div>
+                <div id="metric-total-rx" style="font-size: 1.4rem; font-weight: 700; color: var(--md-blue);">-</div>
+              </div>
+              <div class="metric-card" style="background: var(--bg-surface-variant); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 0.65rem 0.85rem;">
+                <div style="font-size: 0.75rem; color: var(--text-subtle); text-transform: uppercase; font-weight: 600;">Staff Accounts</div>
+                <div id="metric-total-users" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">-</div>
+              </div>
+            </div>
+
+            <!-- Export & Backup Action Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+              <a href="/clinic/export/patients/" download class="elevated-button btn-secondary" style="justify-content: flex-start; text-decoration: none;">
+                <i class="fas fa-file-csv" style="color: var(--md-green); font-size: 1.1rem; width: 22px;"></i>
+                <div style="flex: 1; text-align: left;">
+                  <strong style="display: block; font-size: 0.88rem;">Export All Patients (CSV)</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-subtle);">Demographics, OP numbers, phone & contact details</span>
+                </div>
+                <i class="fas fa-download" style="color: var(--text-subtle);"></i>
+              </a>
+
+              <a href="/clinic/export/visits/" download class="elevated-button btn-secondary" style="justify-content: flex-start; text-decoration: none;">
+                <i class="fas fa-file-waveform" style="color: var(--md-blue); font-size: 1.1rem; width: 22px;"></i>
+                <div style="flex: 1; text-align: left;">
+                  <strong style="display: block; font-size: 0.88rem;">Export All Visits & Diagnoses (CSV)</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-subtle);">Consultation dates, diagnosis remarks, prescriptions</span>
+                </div>
+                <i class="fas fa-download" style="color: var(--text-subtle);"></i>
+              </a>
+
+              <a href="/clinic/export/backup/" download class="elevated-button btn-teal" style="justify-content: flex-start; text-decoration: none;">
+                <i class="fas fa-database" style="color: #ffffff; font-size: 1.1rem; width: 22px;"></i>
+                <div style="flex: 1; text-align: left;">
+                  <strong style="display: block; font-size: 0.88rem; color: #ffffff;">Download Full Database Backup (JSON)</strong>
+                  <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85);">Complete clinic database snapshot for offline safekeeping</span>
+                </div>
+                <i class="fas fa-cloud-arrow-down" style="color: #ffffff;"></i>
+              </a>
+            </div>
+          </div>
+
+          <hr class="flutter-divider" style="margin: 1.5rem 0;">
 
           <!-- Section 1: Add New User -->
           <div class="admin-section">
@@ -803,12 +905,72 @@
     </div>
   </div>
 
+  <!-- 6. Patient Queue & Admission Token Management Dialog -->
+  <div class="dialog-backdrop" id="dialog-patient-queue" style="display: none;">
+    <div class="flutter-dialog queue-dialog-card">
+      <div class="dialog-title-row">
+        <div>
+          <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.15rem;">
+            <i class="fas fa-ticket-simple" style="color: var(--md-teal);"></i>
+            <span>Today's Patient Queue</span>
+          </h3>
+          <div class="dialog-subtitle" style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 3px;">
+            Date: Today &bull; Total Tokens Issued Today: <strong id="queue-total-tokens-label">0</strong>
+          </div>
+        </div>
+        <button type="button" class="icon-button" onclick="closeQueueModal()" title="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Queue Tabs: Waiting / Pending vs Completed Today -->
+      <div class="queue-tab-bar">
+        <button type="button" class="queue-tab-btn active" id="tab-queue-waiting-btn" onclick="switchQueueTab('waiting')">
+          <i class="fas fa-clock"></i>
+          <span>Waiting / Pending</span>
+          <span class="tab-badge-pill" id="tab-waiting-count-badge">0</span>
+        </button>
+        <button type="button" class="queue-tab-btn" id="tab-queue-completed-btn" onclick="switchQueueTab('completed')">
+          <i class="fas fa-circle-check"></i>
+          <span>Completed Today</span>
+          <span class="tab-badge-pill tab-badge-neutral" id="tab-completed-count-badge">0</span>
+        </button>
+      </div>
+
+      <!-- Queue Content Viewport -->
+      <div class="dialog-content-body queue-list-viewport">
+        <!-- Waiting Tab Pane -->
+        <div class="queue-tab-pane" id="queue-pane-waiting">
+          <div class="queue-list" id="queue-waiting-list">
+            <!-- Dynamic Waiting Tokens -->
+          </div>
+        </div>
+
+        <!-- Completed Tab Pane -->
+        <div class="queue-tab-pane" id="queue-pane-completed" style="display: none;">
+          <div class="queue-list" id="queue-completed-list">
+            <!-- Dynamic Completed Tokens -->
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-actions-row" style="justify-content: space-between; border-top: 1px solid var(--divider-color); padding-top: 10px;">
+        <button type="button" class="text-button" onclick="loadTodayQueue(false)" title="Refresh Queue">
+          <i class="fas fa-arrows-rotate"></i> Refresh List
+        </button>
+        <button type="button" class="elevated-button btn-secondary" onclick="closeQueueModal()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ====================================================================
        FLUTTER SNACKBAR CONTAINER (Get.snackbar Bottom Notification)
        ==================================================================== -->
   <div class="snackbar-container" id="snackbar-container"></div>
 
-  <!-- Application Logic -->
-  <script src="{% static 'js/app.js' %}"></script>
+  <!-- Application Logic with Cache Busting -->
+  <script src="{% static 'js/app.js' %}?v=3.0"></script>
 </body>
 </html>

@@ -177,3 +177,45 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.save()
         return user
 
+
+from .models import PatientQueue
+
+class PatientQueueSerializer(serializers.ModelSerializer):
+    patient_id = serializers.IntegerField(source='patient.id', read_only=True)
+    patient_name = serializers.CharField(source='patient.name', read_only=True)
+    patient_op = serializers.IntegerField(source='patient.op_number', read_only=True)
+    patient_phone = serializers.CharField(source='patient.phone', read_only=True)
+    patient_age = serializers.SerializerMethodField()
+    patient_gender = serializers.CharField(source='patient.gender', read_only=True)
+    patient_address = serializers.SerializerMethodField()
+    admitted_time = serializers.SerializerMethodField()
+    completed_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientQueue
+        fields = [
+            'id', 'token_number', 'queue_date', 'status',
+            'patient_id', 'patient_name', 'patient_op', 'patient_phone',
+            'patient_age', 'patient_gender', 'patient_address',
+            'admitted_time', 'completed_time'
+        ]
+
+    def get_patient_age(self, obj):
+        p = obj.patient
+        if p.dob:
+            today = date.today()
+            return today.year - p.dob.year - ((today.month, today.day) < (p.dob.month, p.dob.day))
+        return p.age
+
+    def get_patient_address(self, obj):
+        if hasattr(obj.patient, 'address') and obj.patient.address:
+            return obj.patient.address.address
+        return ''
+
+    def get_admitted_time(self, obj):
+        return obj.admitted_at.strftime('%I:%M %p') if obj.admitted_at else ''
+
+    def get_completed_time(self, obj):
+        return obj.completed_at.strftime('%I:%M %p') if obj.completed_at else ''
+
+

@@ -27,7 +27,20 @@ urlpatterns = [
     path('recent_visits/', views.recent_visits, name='recent_visits'),
     path('stats/', views.clinic_stats, name='clinic_stats'),
     path('users/', views.list_users, name='list_users'),
+
+    path('export/patients/', views.export_patients_csv, name='export_patients'),
+    path('export/visits/', views.export_visits_csv, name='export_visits'),
+    path('export/backup/', views.download_db_backup, name='download_db_backup'),
+    path('metrics/', views.clinic_metrics, name='clinic_metrics'),
+
+    # Patient Queue & Admission Token Endpoints
+    path('queue/today/', views.get_today_queue, name='today_queue'),
+    path('queue/admit/', views.admit_to_queue, name='admit_to_queue'),
+    path('queue/<int:entry_id>/complete/', views.complete_queue_entry, name='complete_queue_entry'),
+    path('queue/complete/', views.complete_queue_entry, name='complete_queue_patient'),
+    path('queue/<int:entry_id>/remove/', views.remove_queue_entry, name='remove_queue_entry'),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -149,7 +149,17 @@ def add_visit(request):
         if isinstance(p, dict):
             Prescription.objects.create(visit=visit, **p)
 
+    # Automatically transition any active queue waiting entry to completed today
+    from django.utils import timezone
+    today = timezone.localdate()
+    PatientQueue.objects.filter(
+        patient=patient,
+        queue_date=today,
+        status='waiting'
+    ).update(status='completed', completed_at=timezone.now())
+
     return Response({'message': 'Visit added successfully', 'visit_id': visit.id}, status=201)
+
 
 
 
@@ -310,4 +320,258 @@ def app_view(request):
     Renders the Single Page Application clinic dashboard.
     """
     return render(request, 'index.html')
+
+
+import csv
+import io
+from django.http import HttpResponse
+from django.core.management import call_command
+from django.db.models import Count, Max
+
+
+@api_view(['GET'])
+def export_patients_csv(request):
+    """
+    Exports all patients with contact info and visit stats to a CSV file.
+    """
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    filename = f"patients_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'OP Number', 'Patient Name', 'Age', 'Date of Birth',
+        'Gender', 'Phone', 'Address', 'Total Visits', 'Last Visit Date'
+    ])
+
+    patients = (
+        Patient.objects
+        .select_related('address')
+        .annotate(
+            total_visits=Count('visits'),
+            last_visit=Max('visits__visit_date')
+        )
+        .order_by('op_number')
+    )
+
+    for p in patients.iterator(chunk_size=500):
+        addr_str = p.address.address if hasattr(p, 'address') and p.address else ''
+        dob_str = p.dob.strftime('%Y-%m-%d') if p.dob else ''
+        last_visit_str = p.last_visit.strftime('%Y-%m-%d %H:%M') if p.last_visit else 'Never'
+        writer.writerow([
+            p.op_number,
+            p.name,
+            p.age,
+            dob_str,
+            p.gender,
+            p.phone,
+            addr_str,
+            p.total_visits,
+            last_visit_str
+        ])
+
+    return response
+
+
+@api_view(['GET'])
+def export_visits_csv(request):
+    """
+    Exports all consultation visits with patient details and prescriptions to CSV.
+    """
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    filename = f"visits_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Visit ID', 'Date & Time', 'OP Number', 'Patient Name',
+        'Patient Phone', 'Diagnosis / Remarks', 'Prescriptions', 'Has X-Ray'
+    ])
+
+    visits = (
+        VisitHistory.objects
+        .select_related('patient')
+        .prefetch_related('prescriptions')
+        .order_by('-visit_date')
+    )
+
+    for v in visits.iterator(chunk_size=500):
+        rx_list = [
+            f"{p.medicine_name} ({p.instructions})" if p.instructions else p.medicine_name
+            for p in v.prescriptions.all()
+        ]
+        rx_str = " | ".join(rx_list)
+        v_date = v.visit_date.strftime('%Y-%m-%d %H:%M') if v.visit_date else ''
+        has_xray = 'Yes' if v.xray_image else 'No'
+
+        writer.writerow([
+            v.id,
+            v_date,
+            v.patient.op_number if v.patient else '',
+            v.patient.name if v.patient else '',
+            v.patient.phone if v.patient else '',
+            v.reason,
+            rx_str,
+            has_xray
+        ])
+
+    return response
+
+
+@api_view(['GET'])
+def download_db_backup(request):
+    """
+    Generates a full JSON database dump of the dental clinic application.
+    """
+    buffer = io.StringIO()
+    call_command('dumpdata', 'dentalclinic', indent=2, stdout=buffer)
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/json')
+    filename = f"clinic_db_backup_{datetime.now().strftime('%Y-%m-%d_%H%M')}.json"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@api_view(['GET'])
+def clinic_metrics(request):
+    """
+    Returns comprehensive database and clinic metrics for Admin panel.
+    """
+    total_patients = Patient.objects.count()
+    total_visits = VisitHistory.objects.count()
+    total_prescriptions = Prescription.objects.count()
+    total_users = AppUser.objects.count()
+    latest_visit = VisitHistory.objects.order_by('-visit_date').first()
+    latest_visit_str = latest_visit.visit_date.strftime('%Y-%m-%d %H:%M') if latest_visit else 'None'
+
+    return Response({
+        'total_patients': total_patients,
+        'total_visits': total_visits,
+        'total_prescriptions': total_prescriptions,
+        'total_users': total_users,
+        'latest_visit': latest_visit_str,
+        'database_name': 'pscdb (PostgreSQL)',
+    })
+
+
+# ==============================================================================
+# PATIENT QUEUE & ADMISSION TOKEN SYSTEM (Live Doctor / Reception Queue)
+# ==============================================================================
+@api_view(['GET'])
+def get_today_queue(request):
+    """
+    Returns today's active waiting queue and completed queue for the doctor desk.
+    Automatically resets each day since entries are filtered by today's date.
+    """
+    from django.utils import timezone
+    today = timezone.localdate()
+
+    waiting = (
+        PatientQueue.objects.filter(queue_date=today, status='waiting')
+        .select_related('patient', 'patient__address')
+        .order_by('token_number')
+    )
+    completed = (
+        PatientQueue.objects.filter(queue_date=today, status='completed')
+        .select_related('patient', 'patient__address')
+        .order_by('-completed_at')
+    )
+
+    return Response({
+        'date': today.strftime('%Y-%m-%d'),
+        'waiting': PatientQueueSerializer(waiting, many=True).data,
+        'completed': PatientQueueSerializer(completed, many=True).data,
+        'pending_count': waiting.count(),
+        'completed_count': completed.count(),
+        'total_tokens': waiting.count() + completed.count(),
+    })
+
+
+@api_view(['POST'])
+def admit_to_queue(request):
+    """
+    Receptionist admits a patient to today's doctor queue, issuing a sequential token.
+    """
+    from django.utils import timezone
+    from django.shortcuts import get_object_or_404
+    from django.db.models import Max
+
+    patient_id = request.data.get('patient_id')
+    if not patient_id:
+        return Response({'error': 'patient_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    patient = get_object_or_404(Patient, id=patient_id)
+    today = timezone.localdate()
+
+    # If patient is already waiting today, return existing token
+    existing = PatientQueue.objects.filter(patient=patient, queue_date=today, status='waiting').first()
+    if existing:
+        return Response({
+            'message': f"{patient.name} is already waiting with Token #{existing.token_number}",
+            'entry': PatientQueueSerializer(existing).data,
+            'already_waiting': True
+        }, status=status.HTTP_200_OK)
+
+    # Next token number for today (starts from 1 each day)
+    max_token = PatientQueue.objects.filter(queue_date=today).aggregate(Max('token_number'))['token_number__max'] or 0
+    next_token = max_token + 1
+
+    entry = PatientQueue.objects.create(
+        patient=patient,
+        token_number=next_token,
+        status='waiting'
+    )
+
+    return Response({
+        'message': f"Admitted {patient.name} (Token #{next_token})",
+        'entry': PatientQueueSerializer(entry).data,
+        'already_waiting': False
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def complete_queue_entry(request, entry_id=None):
+    """
+    Marks a queue entry as completed. Can be called by queue entry ID or patient_id.
+    """
+    from django.utils import timezone
+    from django.shortcuts import get_object_or_404
+    today = timezone.localdate()
+
+    entry = None
+    if entry_id:
+        entry = get_object_or_404(PatientQueue, id=entry_id)
+    else:
+        patient_id = request.data.get('patient_id')
+        if patient_id:
+            entry = PatientQueue.objects.filter(patient_id=patient_id, queue_date=today, status='waiting').first()
+
+    if not entry:
+        return Response({'error': 'No active waiting queue entry found'}, status=status.HTTP_404_NOT_FOUND)
+
+    entry.status = 'completed'
+    entry.completed_at = timezone.now()
+    entry.save()
+
+    return Response({
+        'message': f"Token #{entry.token_number} ({entry.patient.name}) marked as completed",
+        'entry': PatientQueueSerializer(entry).data
+    })
+
+
+@api_view(['DELETE', 'POST'])
+def remove_queue_entry(request, entry_id):
+    """
+    Removes a patient from today's queue.
+    """
+    from django.shortcuts import get_object_or_404
+    entry = get_object_or_404(PatientQueue, id=entry_id)
+    patient_name = entry.patient.name
+    token_num = entry.token_number
+    entry.delete()
+
+    return Response({
+        'message': f"Token #{token_num} ({patient_name}) removed from queue."
+    })
+
 
