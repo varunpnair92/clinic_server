@@ -232,7 +232,7 @@
             <div class="panel-input-box">
               <div class="search-input-wrapper">
                 <i class="fas fa-search search-input-icon"></i>
-                <input type="text" id="doc-search-input" class="flutter-input search-input" placeholder="Name / Phone / OP" oninput="handleDoctorSearch(this.value)" autocomplete="off" autofocus>
+                <input type="text" id="doc-search-input" class="flutter-input search-input" placeholder="Name / Phone / #OP (e.g. #5619)" oninput="handleDoctorSearch(this.value)" autocomplete="off" autofocus>
                 <button type="button" class="clear-input-btn" id="btn-clear-search" onclick="clearDoctorSearch()" title="Clear">
                   <i class="fas fa-times"></i>
                 </button>
@@ -491,7 +491,7 @@
             <div class="search-input-box" style="margin: 0.75rem 0;">
               <div class="search-input-wrapper">
                 <i class="fas fa-search search-input-icon"></i>
-                <input type="text" id="search-view-query" class="flutter-input" placeholder="Name, Phone or OP #" onkeyup="if(event.key==='Enter') executePatientSearch()" autocomplete="off">
+                <input type="text" id="search-view-query" class="flutter-input" placeholder="Name, Phone or #OP (e.g. #5619)" onkeyup="if(event.key==='Enter') executePatientSearch()" autocomplete="off">
               </div>
               <div style="display: flex; gap: 6px; margin-top: 0.5rem;">
                 <button type="button" class="elevated-button btn-teal" style="flex: 1; justify-content: center;" onclick="executePatientSearch()">
@@ -1013,6 +1013,6 @@
   <div class="snackbar-container" id="snackbar-container"></div>
 
   <!-- Application Logic with Cache Busting -->
-  <script src="{% static 'js/app.js' %}?v=4.0"></script>
+  <script src="{% static 'js/app.js' %}?v=4.1"></script>
 </body>
 </html>

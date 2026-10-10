@@ -532,6 +532,19 @@ function handleDoctorSearch(query) {
     return;
   }
 
+  if (query.trim() === '#') {
+    const container = document.getElementById('doc-patient-list');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-list-notice">
+          <i class="fas fa-hashtag" style="font-size: 1.5rem; opacity: 0.5; margin-bottom: 0.5rem; display: block; color: var(--md-primary);"></i>
+          Type OP number to search (e.g. #5619)
+        </div>
+      `;
+    }
+    return;
+  }
+
   State.searchDebounceTimer = setTimeout(async () => {
     const res = await API.searchPatients(query.trim());
     if (res.ok) {
@@ -1164,8 +1177,16 @@ async function executePatientSearch() {
 
   State.searchIsAllMode = false;
   if (loadMoreBar) loadMoreBar.style.display = 'none';
-  if (modeLabel) {
-    modeLabel.innerHTML = `<i class="fas fa-search"></i> Search: "${escapeHtml(query)}"`;
+
+  if (query.startsWith('#')) {
+    const opPart = query.replace(/^#\s*/, '');
+    if (modeLabel) {
+      modeLabel.innerHTML = `<i class="fas fa-hashtag"></i> OP Only: "#${escapeHtml(opPart)}"`;
+    }
+  } else {
+    if (modeLabel) {
+      modeLabel.innerHTML = `<i class="fas fa-search"></i> Search: "${escapeHtml(query)}"`;
+    }
   }
 
   const container = document.getElementById('search-view-results-list');
@@ -1198,9 +1219,15 @@ function renderSearchPatientList(patients) {
   if (!container) return;
 
   if (!patients || patients.length === 0) {
+    const query = document.getElementById('search-view-query')?.value?.trim() || '';
+    let msg = 'No patients found.';
+    if (query.startsWith('#')) {
+      const opNum = query.replace(/^#\s*/, '');
+      msg = opNum ? `No patient found with OP #${escapeHtml(opNum)}.` : 'Please enter an OP number after # (e.g. #5619).';
+    }
     container.innerHTML = `
       <div class="empty-list-notice">
-        No patients found.
+        ${msg}
       </div>
     `;
     return;

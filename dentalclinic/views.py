@@ -7,7 +7,7 @@ import io
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Q, Count, Max
+from django.db.models import Q, Count, Max, Case, When, Value, IntegerField
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
@@ -119,7 +119,45 @@ def search_patient(request):
     if not query:
         return Response([], status=200)
 
-    # Search with query, sorted by newest OP number first
+    # When query starts with '#', search ONLY by OP number (no name, phone, or other fields)
+    if query.startswith('#'):
+        op_query = query.lstrip('#').strip()
+        if not op_query:
+            return Response([], status=200)
+
+        qs = Patient.objects.filter(op_number__icontains=op_query).select_related('address')
+        if op_query.isdigit():
+            exact_op = int(op_query)
+            qs = qs.annotate(
+                is_exact=Case(
+                    When(op_number=exact_op, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ).order_by('-is_exact', '-op_number')
+        else:
+            qs = qs.order_by('-op_number')
+
+        patients = qs[:100]
+        if not patients.exists():
+            return Response({'message': 'No patients found'}, status=404)
+
+        data = [
+            {
+                'id': p.id,
+                'name': p.name,
+                'age': p.age,
+                'dob': p.dob.strftime('%Y-%m-%d') if p.dob else None,
+                'gender': p.gender,
+                'phone': p.phone,
+                'op_number': p.op_number,
+                'address': {'address': p.address.address if hasattr(p, 'address') and p.address else ''},
+            }
+            for p in patients
+        ]
+        return Response(data)
+
+    # General search (name, phone, op_number)
     patients = (
         Patient.objects.filter(
             Q(name__icontains=query) |
