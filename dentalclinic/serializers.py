@@ -83,7 +83,10 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'dob', 'age', 'gender', 'phone', 'address']
+        fields = ['id', 'name', 'dob', 'age', 'gender', 'phone', 'address', 'op_number']
+        extra_kwargs = {
+            'op_number': {'required': False, 'allow_null': True}
+        }
 
     def calculate_age_from_dob(self, dob):
         today = date.today()
@@ -98,9 +101,14 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
         validated_data.pop('id', None)  # Ensure no manual ID override
 
-        last_op = Patient.objects.order_by('-op_number').first()
-        next_op = (last_op.op_number + 1) if last_op else 1000
-        validated_data['op_number'] = next_op
+        custom_op = validated_data.get('op_number')
+        if custom_op:
+            if Patient.objects.filter(op_number=custom_op).exists():
+                raise serializers.ValidationError({'op_number': [f'OP number #{custom_op} is already assigned to another patient.']})
+        else:
+            last_op = Patient.objects.order_by('-op_number').first()
+            next_op = (last_op.op_number + 1) if last_op else 1000
+            validated_data['op_number'] = next_op
 
         patient = Patient.objects.create(**validated_data)
         PatientAddress.objects.create(patient=patient, **address_data)
@@ -111,7 +119,12 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
         dob = validated_data.get('dob')
         if dob:
-            validated_data['age'] = self.calculate_age_from_dob(dob)  # 🔑 Auto calculate during update too
+            validated_data['age'] = self.calculate_age_from_dob(dob)
+
+        custom_op = validated_data.get('op_number')
+        if custom_op and custom_op != instance.op_number:
+            if Patient.objects.filter(op_number=custom_op).exclude(id=instance.id).exists():
+                raise serializers.ValidationError({'op_number': [f'OP number #{custom_op} is already assigned.']})
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

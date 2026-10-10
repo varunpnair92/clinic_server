@@ -18,6 +18,9 @@ const State = {
   // Search & Edit Patient State
   searchEditResults: [],
   selectedEditPatient: null,
+  searchAllOffset: 0,
+  searchAllHasMore: false,
+  searchIsAllMode: false,
 
   // Delete Confirmation Pending ID
   pendingDeletePatientId: null,
@@ -60,9 +63,16 @@ const API = {
     });
   },
 
-  async searchPatients(query) {
+  async searchPatients(query, all = false, offset = 0, limit = 100) {
+    if (all) {
+      return this.request(`/search/?all=1&offset=${offset}&limit=${limit}`);
+    }
     if (!query || !query.trim()) return { ok: true, data: [] };
     return this.request(`/search/?q=${encodeURIComponent(query.trim())}`);
+  },
+
+  async getNextOpNumber() {
+    return this.request('/next_op/');
   },
 
   async getPatientDetail(patientId) {
@@ -360,6 +370,10 @@ function navigateTo(route) {
   if (route === '/doctor') {
     const searchInput = document.getElementById('doc-search-input');
     if (searchInput) searchInput.focus();
+  } else if (route === '/register') {
+    fetchAndFillNextOpNumber();
+  } else if (route === '/search') {
+    loadAllPatientsDesc(true);
   } else if (route === '/admin') {
     loadAdminUsersList();
     loadAdminMetrics();
@@ -818,6 +832,7 @@ async function executeDeletePatient() {
     // Refresh Search view list if query present
     const searchViewQuery = document.getElementById('search-view-query')?.value || '';
     if (searchViewQuery) executePatientSearch();
+    else if (State.searchIsAllMode) loadAllPatientsDesc(true);
   } else {
     SnackBar.error('Error', 'Failed to delete patient file.');
   }
@@ -950,6 +965,21 @@ function applyXrayTransform() {
 // ==========================================================================
 // 3. REGISTER PATIENT (register.dart)
 // ==========================================================================
+async function fetchAndFillNextOpNumber() {
+  const badgeEl = document.getElementById('reg-next-op-num');
+  const inputEl = document.getElementById('reg-op-number');
+  if (badgeEl) badgeEl.textContent = '...';
+
+  const res = await API.getNextOpNumber();
+  if (res.ok && res.data && res.data.next_op_number) {
+    const nextOp = res.data.next_op_number;
+    if (badgeEl) badgeEl.textContent = `#${nextOp}`;
+    if (inputEl) inputEl.value = nextOp;
+  } else {
+    if (badgeEl) badgeEl.textContent = 'Auto';
+  }
+}
+
 function handleDobSelected(dobValue, prefix) {
   const labelEl = document.getElementById(`${prefix}-dob-display-label`);
   const ageInput = document.getElementById(`${prefix}-age`);
@@ -967,6 +997,8 @@ function handleDobSelected(dobValue, prefix) {
 async function handleRegisterSubmit(e) {
   e.preventDefault();
 
+  const opNumberInput = document.getElementById('reg-op-number');
+  const opNumberVal = opNumberInput ? parseInt(opNumberInput.value.trim(), 10) : null;
   const name = document.getElementById('reg-name').value.trim();
   const age = parseFloat(document.getElementById('reg-age').value);
   const dob = document.getElementById('reg-dob').value || null;
@@ -988,6 +1020,9 @@ async function handleRegisterSubmit(e) {
     address: { address },
   };
   if (dob) payload.dob = dob;
+  if (opNumberVal && !isNaN(opNumberVal)) {
+    payload.op_number = opNumberVal;
+  }
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
@@ -999,7 +1034,7 @@ async function handleRegisterSubmit(e) {
   if (res.status === 201) {
     const opNumber = res.data?.op_number || 'N/A';
     const patientId = res.data?.id;
-    SnackBar.success('Success', 'Patient registered successfully.');
+    SnackBar.success('Success', `Patient registered with OP #${opNumber}.`);
 
     // Auto-admit to doctor queue if checkbox checked
     const autoAdmitCheck = document.getElementById('reg-auto-admit');
@@ -1013,10 +1048,14 @@ async function handleRegisterSubmit(e) {
     showOpNumberDialog('OP Number', `New OP Number: #${opNumber}`, patientId);
     document.getElementById('form-register-patient').reset();
     document.getElementById('reg-dob-display-label').textContent = 'Select Date';
+    fetchAndFillNextOpNumber();
   } else if (res.status === 400 && res.data?.existing_op_number) {
     const opNumber = res.data.existing_op_number;
     SnackBar.warning('Already Registered', 'Patient exists with this name and phone.');
     showOpNumberDialog('Patient Exists', `Existing OP Number: #${opNumber}`);
+  } else if (res.status === 400 && res.data?.op_number) {
+    const msg = Array.isArray(res.data.op_number) ? res.data.op_number.join(' ') : res.data.op_number;
+    SnackBar.error('OP Number Conflict', msg);
   } else {
     SnackBar.error('Registration Failed', JSON.stringify(res.data || 'Unknown error'));
   }
@@ -1036,18 +1075,120 @@ function closeOpDialog() {
 // ==========================================================================
 // 4. SEARCH & EDIT PATIENT (search_edit.dart)
 // ==========================================================================
+async function loadAllPatientsDesc(reset = true) {
+  const container = document.getElementById('search-view-results-list');
+  const modeLabel = document.getElementById('search-view-mode-label');
+  const countBadge = document.getElementById('search-view-count-badge');
+  const loadMoreBar = document.getElementById('search-load-more-bar');
+  const loadMoreBtn = document.getElementById('btn-load-more-patients');
+
+  if (reset) {
+    State.searchAllOffset = 0;
+    State.searchEditResults = [];
+    const queryInput = document.getElementById('search-view-query');
+    if (queryInput) queryInput.value = '';
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-list-notice">
+          <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; color: var(--md-primary);"></i>
+          Loading patients in descending OP order...
+        </div>
+      `;
+    }
+  }
+
+  State.searchIsAllMode = true;
+  if (modeLabel) {
+    modeLabel.innerHTML = '<i class="fas fa-arrow-down-wide-short"></i> All Patients (OP &darr; Descending)';
+  }
+
+  const limit = 100;
+  const res = await API.searchPatients('', true, State.searchAllOffset, limit);
+
+  if (loadMoreBtn) {
+    loadMoreBtn.disabled = false;
+    loadMoreBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Load More Patients (Next 100)';
+  }
+
+  if (res.ok && res.data && Array.isArray(res.data.patients)) {
+    const list = res.data.patients;
+    State.searchAllHasMore = !!res.data.has_more;
+    State.searchAllOffset += list.length;
+
+    if (reset) {
+      State.searchEditResults = list;
+    } else {
+      State.searchEditResults = State.searchEditResults.concat(list);
+    }
+
+    if (countBadge) {
+      countBadge.style.display = 'inline-block';
+      countBadge.textContent = `${State.searchEditResults.length} / ${res.data.total_count || State.searchEditResults.length}`;
+    }
+
+    if (loadMoreBar) {
+      loadMoreBar.style.display = State.searchAllHasMore ? 'block' : 'none';
+    }
+
+    renderSearchPatientList(State.searchEditResults);
+  } else {
+    if (reset) {
+      renderSearchPatientList([]);
+      if (countBadge) countBadge.style.display = 'none';
+    }
+    if (loadMoreBar) loadMoreBar.style.display = 'none';
+  }
+}
+
+async function loadMorePatientsDesc() {
+  if (!State.searchAllHasMore) return;
+  const loadMoreBtn = document.getElementById('btn-load-more-patients');
+  if (loadMoreBtn) {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading more patients...';
+  }
+  await loadAllPatientsDesc(false);
+}
+
 async function executePatientSearch() {
-  const query = document.getElementById('search-view-query').value.trim();
+  const queryInput = document.getElementById('search-view-query');
+  const query = queryInput ? queryInput.value.trim() : '';
+  const modeLabel = document.getElementById('search-view-mode-label');
+  const countBadge = document.getElementById('search-view-count-badge');
+  const loadMoreBar = document.getElementById('search-load-more-bar');
+
   if (!query) {
-    renderSearchPatientList([]);
+    loadAllPatientsDesc(true);
     return;
+  }
+
+  State.searchIsAllMode = false;
+  if (loadMoreBar) loadMoreBar.style.display = 'none';
+  if (modeLabel) {
+    modeLabel.innerHTML = `<i class="fas fa-search"></i> Search: "${escapeHtml(query)}"`;
+  }
+
+  const container = document.getElementById('search-view-results-list');
+  if (container) {
+    container.innerHTML = `
+      <div class="empty-list-notice">
+        <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; color: var(--md-primary);"></i>
+        Searching...
+      </div>
+    `;
   }
 
   const res = await API.searchPatients(query);
   if (res.ok) {
     State.searchEditResults = Array.isArray(res.data) ? res.data : [];
+    if (countBadge) {
+      countBadge.style.display = 'inline-block';
+      countBadge.textContent = `${State.searchEditResults.length} found`;
+    }
     renderSearchPatientList(State.searchEditResults);
   } else {
+    State.searchEditResults = [];
+    if (countBadge) countBadge.style.display = 'none';
     renderSearchPatientList([]);
   }
 }

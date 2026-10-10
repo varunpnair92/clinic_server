@@ -9,6 +9,7 @@ urlpatterns = [
     path('app/', views.app_view, name='clinic_app_alt'),
 
     path('register/', views.register_patient),
+    path('next_op/', views.get_next_op, name='get_next_op'),
     path('update/<int:patient_id>/', views.update_patient),
     path('update_visit/<int:visit_id>/', views.update_visit, name='update_visit'),
     path('delete_visit/<int:visit_id>/', views.delete_visit, name='delete_visit'),

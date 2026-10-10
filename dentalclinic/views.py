@@ -62,22 +62,91 @@ def update_patient(request, patient_id):
 
 
 @api_view(['GET'])
+def get_next_op(request):
+    """
+    Returns the next auto-assignable OP number for registration.
+    """
+    last_op = Patient.objects.order_by('-op_number').first()
+    next_op = (last_op.op_number + 1) if last_op else 1000
+    return Response({'next_op_number': next_op})
+
+
+@api_view(['GET'])
 def search_patient(request):
+    """
+    Searches patients by query or returns full patient list ordered by op_number DESC.
+    """
     query = request.GET.get('q', '').strip()
+    show_all = request.GET.get('all', '').strip()
+    try:
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        limit = 100
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+
+    # View all patients ordered by OP number descending
+    if show_all in ('1', 'true') or (not query and 'all' in request.GET):
+        total_count = Patient.objects.count()
+        patients = (
+            Patient.objects
+            .select_related('address')
+            .order_by('-op_number')[offset:offset+limit]
+        )
+        data = [
+            {
+                'id': p.id,
+                'name': p.name,
+                'age': p.age,
+                'dob': p.dob.strftime('%Y-%m-%d') if p.dob else None,
+                'gender': p.gender,
+                'phone': p.phone,
+                'op_number': p.op_number,
+                'address': {'address': p.address.address if hasattr(p, 'address') and p.address else ''},
+            }
+            for p in patients
+        ]
+        return Response({
+            'patients': data,
+            'total_count': total_count,
+            'offset': offset,
+            'limit': limit,
+            'has_more': (offset + limit) < total_count,
+        })
+
     if not query:
         return Response([], status=200)
 
-    patients = Patient.objects.filter(
-        Q(name__icontains=query) |
-        Q(phone__icontains=query) |
-        Q(op_number__icontains=query)
-    ).distinct()[:50]
+    # Search with query, sorted by newest OP number first
+    patients = (
+        Patient.objects.filter(
+            Q(name__icontains=query) |
+            Q(phone__icontains=query) |
+            Q(op_number__icontains=query)
+        )
+        .select_related('address')
+        .order_by('-op_number')[:100]
+    )
 
     if not patients.exists():
         return Response({'message': 'No patients found'}, status=404)
 
-    serializer = PatientDetailSerializer(patients, many=True, context={'request': request})
-    return Response(serializer.data)
+    data = [
+        {
+            'id': p.id,
+            'name': p.name,
+            'age': p.age,
+            'dob': p.dob.strftime('%Y-%m-%d') if p.dob else None,
+            'gender': p.gender,
+            'phone': p.phone,
+            'op_number': p.op_number,
+            'address': {'address': p.address.address if hasattr(p, 'address') and p.address else ''},
+        }
+        for p in patients
+    ]
+    return Response(data)
 
 
 
