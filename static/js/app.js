@@ -22,6 +22,9 @@ const State = {
   searchAllHasMore: false,
   searchIsAllMode: false,
 
+  // Report Grouped State
+  reportGroupedPatients: [],
+
   // Delete Confirmation Pending ID
   pendingDeletePatientId: null,
   pendingDeletePatientName: '',
@@ -1400,14 +1403,57 @@ function renderReportLoading() {
   }
 }
 
+function groupVisitsByPatient(visits) {
+  const patientMap = new Map();
+
+  for (const v of visits) {
+    // Group primarily by patient_op, fallback to patient_id
+    const key = (v.patient_op !== undefined && v.patient_op !== null) ? `op_${v.patient_op}` : `id_${v.patient_id}`;
+
+    if (!patientMap.has(key)) {
+      patientMap.set(key, {
+        patient_id: v.patient_id,
+        patient_op: v.patient_op,
+        patient_name: v.patient_name || 'N/A',
+        patient_phone: v.patient_phone || '',
+        visits: [],
+      });
+    }
+
+    patientMap.get(key).visits.push(v);
+  }
+
+  const grouped = Array.from(patientMap.values());
+
+  // Sort each patient's visits with newest visit first
+  for (const item of grouped) {
+    item.visits.sort((a, b) => {
+      const da = new Date(a.visit_date || 0);
+      const db = new Date(b.visit_date || 0);
+      return db - da || (b.id - a.id);
+    });
+  }
+
+  // Sort patients: newest visit first
+  grouped.sort((a, b) => {
+    const da = a.visits[0] ? new Date(a.visits[0].visit_date || 0) : 0;
+    const db = b.visits[0] ? new Date(b.visits[0].visit_date || 0) : 0;
+    return db - da || ((b.patient_op || 0) - (a.patient_op || 0));
+  });
+
+  return grouped;
+}
+
 function renderReportTableResults(visits) {
   const tbody = document.getElementById('report-table-body');
   const countBadge = document.getElementById('report-results-count');
+  const expandControls = document.getElementById('report-expand-controls');
   if (!tbody) return;
 
-  if (countBadge) countBadge.textContent = visits.length;
-
-  if (visits.length === 0) {
+  if (!visits || visits.length === 0) {
+    State.reportGroupedPatients = [];
+    if (countBadge) countBadge.textContent = '0';
+    if (expandControls) expandControls.style.display = 'none';
     tbody.innerHTML = `
       <tr>
         <td colspan="7" class="empty-table-cell">
@@ -1418,29 +1464,198 @@ function renderReportTableResults(visits) {
     return;
   }
 
-  tbody.innerHTML = visits
-    .map((v, i) => {
-      const rxText = (v.prescriptions || [])
-        .map((p) => `💊 ${escapeHtml(p.medicine_name || '')} ${p.instructions ? `- ${escapeHtml(p.instructions)}` : ''}`)
-        .join('<br>');
+  const grouped = groupVisitsByPatient(visits);
+  State.reportGroupedPatients = grouped;
 
-      const xrayHtml = v.xray_url
-        ? `<button type="button" class="xray-thumbnail-btn" onclick="openXrayDialog('${escapeHtml(v.xray_url)}')"><img src="${escapeHtml(v.xray_url)}" class="xray-thumb-img"></button>`
-        : '<span style="color: var(--text-subtle);">&mdash;</span>';
+  if (countBadge) {
+    countBadge.textContent = `${grouped.length} Patient${grouped.length !== 1 ? 's' : ''} (${visits.length} Visit${visits.length !== 1 ? 's' : ''})`;
+  }
+  if (expandControls) {
+    expandControls.style.display = 'flex';
+  }
+
+  tbody.innerHTML = grouped
+    .map((p, i) => {
+      const visitCount = p.visits.length;
+      const latestVisit = p.visits[0] || {};
+      const latestDate = latestVisit.visit_date || '&mdash;';
+      const latestRemarks = latestVisit.reason ? latestVisit.reason.replace(/\n+/g, ' ').trim() : '&mdash;';
+
+      // Build expanded visits list
+      const visitsHtml = p.visits
+        .map((v, vIndex) => {
+          const rxList = (v.prescriptions || []).filter((rx) => rx && (rx.medicine_name || rx.instructions));
+          const rxHtml = rxList.length > 0
+            ? rxList
+                .map(
+                  (rx, rIndex) => `
+                <div class="rx-mini-item">
+                  <span class="rx-num">${rIndex + 1}.</span>
+                  <span class="rx-name">${escapeHtml(rx.medicine_name || '')}</span>
+                  ${rx.instructions ? `<span class="rx-inst">&bull; ${escapeHtml(rx.instructions)}</span>` : ''}
+                </div>
+              `
+                )
+                .join('')
+            : '<span class="no-data-text"><i class="fas fa-prescription-bottle"></i> No medicines prescribed</span>';
+
+          const xrayThumb = v.xray_url
+            ? `
+              <button type="button" class="xray-thumbnail-btn" onclick="event.stopPropagation(); openXrayDialog('${escapeHtml(v.xray_url)}')" title="Click to view full X-Ray">
+                <img src="${escapeHtml(v.xray_url)}" class="xray-thumb-img" alt="X-Ray">
+                <span class="xray-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i> View</span>
+              </button>
+            `
+            : '<span class="no-data-text"><i class="fas fa-ban"></i> No X-Ray</span>';
+
+          const formattedReason = escapeHtml(v.reason || 'No remarks recorded.').replace(/\n/g, '<br>');
+
+          return `
+            <div class="report-visit-card">
+              <div class="report-visit-header">
+                <div class="report-visit-badge">
+                  <i class="fas fa-calendar-check"></i>
+                  <span>Visit #${visitCount - vIndex} &bull; ${escapeHtml(v.visit_date || '')}</span>
+                </div>
+                <div class="report-visit-actions">
+                  ${p.patient_id ? `
+                    <button type="button" class="chip-btn" onclick="event.stopPropagation(); openDoctorForPatient(${p.patient_id})" title="Open this patient in Doctor Desk">
+                      <i class="fas fa-user-doctor"></i> Doctor Desk
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <div class="report-visit-grid">
+                <!-- Diagnosis / Remarks -->
+                <div class="report-grid-col">
+                  <div class="report-col-title"><i class="fas fa-stethoscope"></i> Diagnosis & Doctor Remarks</div>
+                  <div class="visit-remarks-text">${formattedReason}</div>
+                </div>
+
+                <!-- Prescriptions -->
+                <div class="report-grid-col">
+                  <div class="report-col-title"><i class="fas fa-pills"></i> Prescriptions (${rxList.length})</div>
+                  <div class="report-col-content">${rxHtml}</div>
+                </div>
+
+                <!-- X-Ray -->
+                <div class="report-grid-col report-xray-col">
+                  <div class="report-col-title"><i class="fas fa-x-ray"></i> X-Ray Image</div>
+                  <div class="report-col-content">${xrayThumb}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
 
       return `
-        <tr>
-          <td>${i + 1}</td>
-          <td><strong>${escapeHtml(v.visit_date || '')}</strong></td>
-          <td>${escapeHtml(v.patient_name || 'N/A')}</td>
-          <td><span class="op-chip">#${v.patient_op || 'N/A'}</span></td>
-          <td>${escapeHtml(v.reason || 'N/A')}</td>
-          <td>${rxText || '&mdash;'}</td>
-          <td>${xrayHtml}</td>
+        <!-- Main Parent Row (1 Single Row per Patient/OP) -->
+        <tr class="report-parent-row" id="report-parent-${i}" onclick="toggleReportDetailRow(${i})" title="Click row to view all visit details">
+          <td style="width: 45px; text-align: center;">
+            <i class="fas fa-chevron-right chevron-icon" id="report-chevron-${i}"></i>
+            <span style="font-size: 0.82rem; margin-left: 4px; color: var(--text-subtle);">${i + 1}</span>
+          </td>
+          <td style="width: 90px;"><span class="op-chip">#${escapeHtml(p.patient_op || 'N/A')}</span></td>
+          <td>
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem;">${escapeHtml(p.patient_name || 'N/A')}</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px;">
+              <i class="fas fa-phone" style="font-size: 0.72rem; opacity: 0.7;"></i> ${escapeHtml(p.patient_phone || 'No phone')}
+            </div>
+          </td>
+          <td style="width: 110px; text-align: center;">
+            <span class="badge ${visitCount > 1 ? 'badge-multi-visit' : 'badge-single-visit'}">
+              <i class="fas ${visitCount > 1 ? 'fa-layer-group' : 'fa-check'}"></i> ${visitCount} visit${visitCount > 1 ? 's' : ''}
+            </span>
+          </td>
+          <td style="width: 140px; font-size: 0.84rem; font-weight: 600; color: var(--text-primary);">
+            ${latestDate}
+          </td>
+          <td>
+            <div class="truncate-text" style="max-width: 320px;" title="${escapeHtml(latestRemarks)}">
+              ${escapeHtml(latestRemarks)}
+            </div>
+          </td>
+          <td style="width: 130px; text-align: center;">
+            <button type="button" class="elevated-button btn-secondary btn-sm" onclick="event.stopPropagation(); toggleReportDetailRow(${i})" id="report-btn-toggle-${i}" style="font-size: 0.78rem; padding: 4px 10px; width: 100%; justify-content: center;">
+              <i class="fas fa-eye" id="report-btn-icon-${i}"></i>
+              <span id="report-btn-label-${i}">Details (${visitCount})</span>
+            </button>
+          </td>
+        </tr>
+
+        <!-- Expanded Details Sub-Row (Reveals All Visits on Click) -->
+        <tr class="report-detail-row" id="report-detail-${i}" style="display: none;">
+          <td colspan="7" style="padding: 0; background-color: var(--bg-surface-variant); border-bottom: 2px solid var(--divider-color);">
+            <div class="report-detail-expanded-box">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.35rem; border-bottom: 1px dashed var(--divider-color); font-size: 0.82rem; color: var(--text-secondary);">
+                <span><i class="fas fa-folder-open" style="color: var(--md-primary);"></i> Complete Visit History for <strong>${escapeHtml(p.patient_name)}</strong> (OP #${p.patient_op})</span>
+                <span class="badge" style="background: rgba(0,121,107,0.1); color: var(--md-primary); font-weight: 700;">${visitCount} Record${visitCount !== 1 ? 's' : ''}</span>
+              </div>
+              ${visitsHtml}
+            </div>
+          </td>
         </tr>
       `;
     })
     .join('');
+}
+
+function toggleReportDetailRow(index) {
+  const detailRow = document.getElementById(`report-detail-${index}`);
+  const parentRow = document.getElementById(`report-parent-${index}`);
+  const chevron = document.getElementById(`report-chevron-${index}`);
+  const btnLabel = document.getElementById(`report-btn-label-${index}`);
+  const btnIcon = document.getElementById(`report-btn-icon-${index}`);
+
+  if (!detailRow || !parentRow) return;
+
+  const isHidden = detailRow.style.display === 'none';
+  detailRow.style.display = isHidden ? 'table-row' : 'none';
+  parentRow.classList.toggle('is-expanded', isHidden);
+
+  if (chevron) {
+    chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+  }
+  if (btnIcon) {
+    btnIcon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+  }
+  if (btnLabel) {
+    const count = State.reportGroupedPatients[index]?.visits?.length || 0;
+    btnLabel.textContent = isHidden ? 'Hide Details' : `Details (${count})`;
+  }
+}
+
+function toggleAllReportRows(expand) {
+  const count = State.reportGroupedPatients ? State.reportGroupedPatients.length : 0;
+  for (let i = 0; i < count; i++) {
+    const detailRow = document.getElementById(`report-detail-${i}`);
+    const parentRow = document.getElementById(`report-parent-${i}`);
+    const chevron = document.getElementById(`report-chevron-${i}`);
+    const btnLabel = document.getElementById(`report-btn-label-${i}`);
+    const btnIcon = document.getElementById(`report-btn-icon-${i}`);
+    const visitCount = State.reportGroupedPatients[i]?.visits?.length || 0;
+
+    if (detailRow && parentRow) {
+      detailRow.style.display = expand ? 'table-row' : 'none';
+      parentRow.classList.toggle('is-expanded', expand);
+      if (chevron) {
+        chevron.style.transform = expand ? 'rotate(90deg)' : 'rotate(0deg)';
+      }
+      if (btnIcon) {
+        btnIcon.className = expand ? 'fas fa-eye-slash' : 'fas fa-eye';
+      }
+      if (btnLabel) {
+        btnLabel.textContent = expand ? 'Hide Details' : `Details (${visitCount})`;
+      }
+    }
+  }
+}
+
+function openDoctorForPatient(patientId) {
+  navigateTo('/doctor');
+  selectPatientInDoctorView(patientId);
 }
 
 // ==========================================================================

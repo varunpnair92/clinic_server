@@ -1781,3 +1781,178 @@ body {
   color: white;
 }
 
+/* ==========================================================================
+   GROUPED REPORTS: SINGLE ROW PER OP WITH EXPANDABLE VISIT DETAILS
+   ========================================================================== */
+.report-grouped-table .report-parent-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.report-grouped-table .report-parent-row:hover {
+  background-color: rgba(0, 121, 107, 0.07) !important;
+}
+
+.report-grouped-table .report-parent-row.is-expanded {
+  background-color: rgba(0, 121, 107, 0.05);
+}
+
+.report-grouped-table .chevron-icon {
+  display: inline-block;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--md-primary);
+  font-size: 0.78rem;
+}
+
+.badge-multi-visit {
+  background: rgba(0, 121, 107, 0.14);
+  color: var(--md-primary);
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.badge-single-visit {
+  background: var(--bg-surface-variant);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.report-detail-expanded-box {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.report-visit-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.report-visit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.95rem;
+  background: var(--bg-surface-variant);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.report-visit-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--md-primary);
+}
+
+.report-visit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-visit-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.8fr 1fr;
+  gap: 1.1rem;
+  padding: 0.9rem 1rem;
+}
+
+@media (max-width: 900px) {
+  .report-visit-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+.report-grid-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-col-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-subtle);
+  margin-bottom: 0.45rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visit-remarks-text {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-surface-variant);
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--md-primary);
+}
+
+.rx-mini-item {
+  font-size: 0.83rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+  background: var(--bg-surface-variant);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.rx-num {
+  font-weight: 700;
+  color: var(--text-subtle);
+  margin-right: 4px;
+}
+
+.rx-name {
+  font-weight: 600;
+  color: var(--md-primary);
+}
+
+.rx-inst {
+  color: var(--text-secondary);
+}
+
+.no-data-text {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media print {
+  .report-detail-row {
+    display: table-row !important;
+  }
+  .chevron-icon, #report-expand-controls, .report-visit-actions {
+    display: none !important;
+  }
+}
+

@@ -640,22 +640,32 @@
 
           <!-- Report Results Table Card -->
           <div class="flutter-card report-table-card" style="margin-top: 1.5rem;">
-            <div class="table-card-header">
-              <h3 id="report-results-title">Consultation Records</h3>
-              <span class="counter-badge" id="report-results-count">0</span>
+            <div class="table-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h3 id="report-results-title" style="margin: 0;">Consultation Records</h3>
+                <span class="counter-badge" id="report-results-count">0</span>
+              </div>
+              <div id="report-expand-controls" style="display: none; gap: 8px;">
+                <button type="button" class="elevated-button btn-secondary" onclick="toggleAllReportRows(true)" style="padding: 4px 10px; font-size: 0.78rem;">
+                  <i class="fas fa-angles-down"></i> Expand All
+                </button>
+                <button type="button" class="elevated-button btn-secondary" onclick="toggleAllReportRows(false)" style="padding: 4px 10px; font-size: 0.78rem;">
+                  <i class="fas fa-angles-up"></i> Collapse All
+                </button>
+              </div>
             </div>
 
             <div class="table-responsive">
-              <table class="flutter-table">
+              <table class="flutter-table report-grouped-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Date & Time</th>
-                    <th>Patient Name</th>
-                    <th>OP#</th>
-                    <th>Remarks</th>
-                    <th>Prescriptions</th>
-                    <th>X-Ray</th>
+                    <th style="width: 45px; text-align: center;">#</th>
+                    <th style="width: 90px;">OP#</th>
+                    <th>Patient Name & Phone</th>
+                    <th style="width: 110px; text-align: center;">Visits</th>
+                    <th style="width: 140px;">Latest Visit</th>
+                    <th>Latest Remarks</th>
+                    <th style="width: 130px; text-align: center;">Details</th>
                   </tr>
                 </thead>
                 <tbody id="report-table-body">
@@ -1013,6 +1023,6 @@
   <div class="snackbar-container" id="snackbar-container"></div>
 
   <!-- Application Logic with Cache Busting -->
-  <script src="{% static 'js/app.js' %}?v=4.1"></script>
+  <script src="{% static 'js/app.js' %}?v=4.2"></script>
 </body>
 </html>
